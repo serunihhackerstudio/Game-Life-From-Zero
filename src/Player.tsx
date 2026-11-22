@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react'
 import { useFrame, useThree } from '@react-three/fiber'
 import { Group, MathUtils, Vector3 } from 'three'
-import { Humanoid, IDLE_ACT, type Act, type Look } from './Humanoid'
+import { Humanoid, IDLE_ACT, type Act, type Cond, type Look } from './Humanoid'
 import { sceneFrame } from './scenes'
 import { invCount } from './items'
 import { resolve, ZONES } from './data'
@@ -14,6 +14,7 @@ export function Player() {
   const group = useRef<Group>(null)
   const speedRef = useRef(0)
   const actRef = useRef<Act>({ ...IDLE_ACT })
+  const condRef = useRef<Cond>({ hunger: 100, energy: 100, health: 100, mood: 75 })
   const camLook = useRef(new Vector3(playerPos.x, 1.3, playerPos.z))
   const keys = useRef<Record<string, boolean>>({})
   const yaw = useRef(Math.PI)
@@ -62,10 +63,13 @@ export function Player() {
     const dt = Math.min(delta, 0.05)
     const s = useGame.getState()
 
+    Object.assign(condRef.current, { hunger: s.hunger, energy: s.energy, health: s.health, mood: s.mood })
+
     // ---- adegan aktivitas: karakter + kamera dikendalikan oleh scenes.ts ----
     if (s.scene) {
       const t = (performance.now() - s.scene.t0) / 1000
       const f = sceneFrame(s.scene, t, invCount(s.inv))
+      g.visible = !f.hidden
       g.position.set(f.x, f.y, f.z)
       g.rotation.set(f.rotX, f.rotY, 0)
       speedRef.current = f.speed
@@ -78,6 +82,7 @@ export function Player() {
     }
     if (actRef.current.pose !== 'stand' || actRef.current.hold !== 'none') Object.assign(actRef.current, IDLE_ACT)
     g.rotation.x = 0
+    g.visible = true
     const frozen = s.paused || !!s.ui || !!s.busy || !!s.gameOver
     const k = keys.current
 
@@ -94,8 +99,11 @@ export function Player() {
         let vz = -cy * fw - sy * rt
         const len = Math.hypot(vx, vz)
         vx /= len; vz /= len
-        const running = !!(k.ShiftLeft || k.ShiftRight) && s.energy > 5
-        speed = running ? RUN : WALK
+        // kondisi tubuh memperlambat gerak: lapar, lelah, sakit
+        const lv = (v: number, th: number) => Math.min(1, Math.max(0, (th - v) / th))
+        const slow = Math.max(0.5, 1 - 0.3 * lv(s.energy, 35) - 0.25 * lv(s.hunger, 35) - 0.25 * lv(s.health, 60))
+        const running = !!(k.ShiftLeft || k.ShiftRight) && s.energy > 5 && s.hunger > 0
+        speed = (running ? RUN : WALK) * slow
         const [nx, nz] = resolve(playerPos.x + vx * speed * dt, playerPos.z + vz * speed * dt, RADIUS)
         playerPos.x = nx; playerPos.z = nz
         const target = Math.atan2(vx, vz)
@@ -134,7 +142,7 @@ export function Player() {
 
   return (
     <group ref={group}>
-      <Humanoid look={look} speedRef={speedRef} actRef={actRef} />
+      <Humanoid look={look} speedRef={speedRef} actRef={actRef} condRef={condRef} />
     </group>
   )
 }

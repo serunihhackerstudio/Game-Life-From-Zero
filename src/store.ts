@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import { START, type ZoneId } from './data'
 import { clearSave, loadSave, writeSave } from './save'
+import { JOBS, type JobDef, type JobId } from './jobs'
 import { INV_CAP, invCount, ITEMS, RECIPES, SHOPS, type ItemId, type ShopId } from './items'
 
 export type Gender = 'male' | 'female'
@@ -36,9 +37,9 @@ export function visMinute(): number {
 /** Posisi pemain: dimutasi tiap frame, tidak masuk React state. */
 export const playerPos = { x: START.x, z: START.z, rot: START.rot }
 
-export type SceneKind = 'work' | 'eat' | 'shop' | 'cook' | 'sleep' | 'rest'
+export type SceneKind = 'work' | 'koran' | 'parkir' | 'pelayan' | 'kurir' | 'eat' | 'shop' | 'cook' | 'sleep' | 'rest'
 export interface SceneInfo { kind: SceneKind; label: string; t0: number; dur: number; fromMin: number; toMin: number; shop?: ShopId; pulseAt: number }
-export type Ui = null | { kind: 'shop'; shop: ShopId } | { kind: 'cook' } | { kind: 'inv' }
+export type Ui = null | { kind: 'shop'; shop: ShopId } | { kind: 'cook' } | { kind: 'inv' } | { kind: 'jobs' }
 interface Goals { day: number; worked: boolean; ate: boolean; slept: boolean }
 interface Toast { id: number; text: string; kind: 'info' | 'good' | 'bad' }
 type Note = { text: string; kind: Toast['kind'] }
@@ -47,6 +48,7 @@ interface Data {
   name: string; gender: Gender
   money: number; health: number; energy: number; hunger: number; mood: number
   minute: number; rentDueDay: number; shifts: number; goals: Goals; inv: Record<string, number>
+  hired: string[]; jobShifts: Record<string, number>; jobDay: Record<string, number>
   gameOver: string | null
 }
 
@@ -70,6 +72,7 @@ interface GameState extends Data {
   buy: (shop: ShopId, item: ItemId) => void
   cook: (recipeId: string) => void
   eat: (item: ItemId) => void
+  applyJob: (id: JobId) => void
   tick: (dt: number, running: boolean) => void
   interact: () => void
   saveNow: () => void
@@ -87,7 +90,7 @@ function newDay(d: Data, day: number, notes: Note[]) {
 }
 
 /** Simulasi kebutuhan karakter per potongan 10 menit game. */
-function simulate(d0: Data, minutes: number, mode: Mode, notes: Note[]): Data {
+function simulate(d0: Data, minutes: number, mode: Mode, notes: Note[], drain = 6): Data {
   const d = { ...d0 }
   let left = minutes
   while (left > 0 && !d.gameOver) {
@@ -97,7 +100,7 @@ function simulate(d0: Data, minutes: number, mode: Mode, notes: Note[]): Data {
     const prevDay = dayOf(d.minute)
     d.minute += dt
     if (mode === 'sleep') { d.hunger -= 1.5 * h; d.energy += 9 * h }
-    else { d.hunger -= 3 * h; d.energy -= (mode === 'work' ? 6 : 2) * h }
+    else { d.hunger -= 3 * h; d.energy -= (mode === 'work' ? drain : 2) * h }
     d.hunger = clamp(d.hunger); d.energy = clamp(d.energy)
     if (d.hunger <= 0 || d.energy <= 0) d.health -= 6 * h
     else if (d.hunger > 40 && d.energy > 40) d.health += (mode === 'sleep' ? 3 : 1) * h
@@ -118,6 +121,9 @@ const DEFAULT: Data = {
   minute: 7 * 60, rentDueDay: 8, shifts: 0,
   goals: { day: 1, worked: false, ate: false, slept: false },
   inv: {},
+  hired: [],
+  jobShifts: {},
+  jobDay: {},
   gameOver: null,
 }
 
@@ -134,7 +140,7 @@ export const useGame = create<GameState>((set, get) => {
   const dataOf = (s: GameState): Data => ({
     name: s.name, gender: s.gender, money: s.money, health: s.health, energy: s.energy,
     hunger: s.hunger, mood: s.mood, minute: s.minute, rentDueDay: s.rentDueDay,
-    shifts: s.shifts, goals: s.goals, inv: s.inv, gameOver: s.gameOver,
+    shifts: s.shifts, goals: s.goals, inv: s.inv, hired: s.hired, jobShifts: s.jobShifts, jobDay: s.jobDay, gameOver: s.gameOver,
   })
   const commit = (d: Data, notes: Note[]) => {
     set({ ...d })
@@ -149,6 +155,30 @@ export const useGame = create<GameState>((set, get) => {
       commit(d, notes)
       set((s) => ({ scene: null, busy: null, cutKey: s.cutKey + 1 }))
     }, dur)
+  }
+
+  /** Mulai shift kerja: syarat dicek, hasil diterapkan di akhir adegan. */
+  const workJob = (job: JobDef) => {
+    const s = get()
+    const hour = hourOf(s.minute), day = dayOf(s.minute)
+    if (!s.hired.includes(job.id)) return toast(`Kamu belum diterima sebagai ${job.name.toLowerCase()}. Lamar dulu di Job Center.`, 'bad')
+    if (s.jobDay[job.id] === day) return toast(`Kamu sudah bekerja sebagai ${job.name.toLowerCase()} hari ini.`, 'info')
+    if (hour < job.start[0] || hour >= job.start[1]) return toast(`Shift ${job.name.toLowerCase()} dimulai antara ${String(job.start[0]).padStart(2, '0')}.00–${String(job.start[1]).padStart(2, '0')}.00.`, 'bad')
+    if (s.energy < 25) return toast('Terlalu lelah untuk bekerja. Istirahat dulu.', 'bad')
+    const before = s.jobShifts[job.id] ?? 0
+    const lvl = jobLevel(before)
+    const prod = (s.hunger < 25 ? 0.7 : 1) * (s.mood < 30 ? 0.9 : 1)
+    const wage = Math.round((job.wage * lvl.mult * prod) / 500) * 500
+    const notes: Note[] = []
+    const d = simulate(dataOf(s), job.hours * 60, 'work', notes, job.energyPerHour)
+    d.money += wage; d.shifts += 1; d.mood = clamp(d.mood + 2)
+    d.jobShifts = { ...d.jobShifts, [job.id]: before + 1 }
+    d.jobDay = { ...d.jobDay, [job.id]: day }
+    d.goals = { ...d.goals, worked: true }
+    notes.push({ text: `Shift ${job.name.toLowerCase()} selesai. Upah ${rupiah(wage)}${prod < 1 ? ' (produktivitas turun)' : ''}.`, kind: 'good' })
+    const nl = jobLevel(before + 1)
+    if (nl.name !== lvl.name) notes.push({ text: `Naik level ${job.name.toLowerCase()}: ${nl.name}!`, kind: 'good' })
+    playScene(job.scene, job.label, job.sceneMs, s.minute, d, notes)
   }
 
   return {
@@ -171,7 +201,7 @@ export const useGame = create<GameState>((set, get) => {
       playerPos.x = sv.px; playerPos.z = sv.pz; playerPos.rot = sv.prot
       acc = 0; runAcc = 0
       const { v: _v, px: _px, pz: _pz, prot: _prot, ...data } = sv
-      set({ ...data, inv: data.inv ?? {}, screen: 'playing', paused: false, ui: null, scene: null, busy: null, nearby: null, toasts: [] })
+      set({ ...data, inv: data.inv ?? {}, hired: data.hired ?? ['gudang'], jobShifts: data.jobShifts ?? { gudang: data.shifts ?? 0 }, jobDay: data.jobDay ?? {}, screen: 'playing', paused: false, ui: null, scene: null, busy: null, nearby: null, toasts: [] })
       toast('Permainan dilanjutkan.', 'info')
     },
 
@@ -234,6 +264,15 @@ export const useGame = create<GameState>((set, get) => {
       commit(d, notes)
     },
 
+    applyJob: (id) => {
+      const s = get(), job = JOBS[id]
+      if (s.hired.includes(id)) return
+      if (s.shifts < job.req) return toast(`Butuh pengalaman ${job.req} shift (kamu ${s.shifts}).`, 'bad')
+      set({ hired: [...s.hired, id] })
+      toast(`Diterima sebagai ${job.name.toLowerCase()}! Datang ke ${job.where}.`, 'good')
+      get().saveNow()
+    },
+
     saveNow: () => {
       const s = get()
       if (s.screen !== 'playing' || s.gameOver) return
@@ -279,20 +318,14 @@ export const useGame = create<GameState>((set, get) => {
           notes.push({ text: `Makan nasi pecel. -${rupiah(MEAL_PRICE)}`, kind: 'info' })
           return playScene('eat', 'Makan di warung…', 5500, s.minute, d, notes)
         }
-        case 'gudang': {
-          if (hour < 8 || hour >= 12) return toast('Shift gudang dimulai antara 08.00–12.00.', 'bad')
-          if (s.energy < 25) return toast('Terlalu lelah untuk bekerja. Istirahat dulu.', 'bad')
-          const lvl = jobLevel(s.shifts)
-          const prod = (s.hunger < 25 ? 0.7 : 1) * (s.mood < 30 ? 0.9 : 1)
-          const wage = Math.round((WAGE * lvl.mult * prod) / 1000) * 1000
-          const d = simulate(base, 360, 'work', notes)
-          d.money += wage; d.shifts += 1; d.mood = clamp(d.mood + 2)
-          d.goals = { ...d.goals, worked: true }
-          notes.push({ text: `Shift selesai. Upah ${rupiah(wage)}${prod < 1 ? ' (produktivitas turun)' : ''}.`, kind: 'good' })
-          const nl = jobLevel(d.shifts)
-          if (nl.name !== lvl.name) notes.push({ text: `Naik level pekerjaan: ${nl.name}!`, kind: 'good' })
-          return playScene('work', 'Bekerja di gudang… (6 jam)', 8000, s.minute, d, notes)
-        }
+        case 'gudang':
+        case 'koran':
+        case 'parkir':
+        case 'pelayan':
+        case 'kurir':
+          return workJob(JOBS[s.nearby as JobId])
+        case 'jobcenter':
+          return set({ ui: { kind: 'jobs' } })
         case 'taman': {
           const d = simulate(base, 60, 'awake', notes)
           d.energy = clamp(d.energy + 10); d.mood = clamp(d.mood + 8)

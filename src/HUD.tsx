@@ -6,7 +6,7 @@ import { INV_CAP, invCount } from './items'
 
 function Bar({ label, value, color }: { label: string; value: number; color: string }) {
   return (
-    <div className="bar">
+    <div className={'bar' + (value < 25 ? ' crit' : '')}>
       <span>{label}</span>
       <div className="track"><div style={{ width: `${value}%`, background: color }} /></div>
       <b>{Math.round(value)}</b>
@@ -31,10 +31,20 @@ export function HUD() {
   const zone = ZONES.find((z) => z.id === s.nearby)
   const dueIn = s.rentDueDay - day
   const g = s.goals
+  const status = [
+    s.hunger < 25 && { k: 'h', t: s.hunger <= 0 ? '🥴 Kelaparan!' : '🍽️ Lapar', tip: 'Gerak melambat, produktivitas kerja turun. Makan segera.' },
+    s.energy < 25 && { k: 'e', t: '😴 Mengantuk', tip: 'Gerak melambat, mata sayu. Tidur atau minum kopi.' },
+    s.health < 50 && { k: 's', t: '🤒 Kurang sehat', tip: 'Wajah pucat dan batuk. Makan teratur dan istirahat.' },
+    s.mood < 30 && { k: 'm', t: '😞 Murung', tip: 'Mood rendah. Istirahat di taman atau makan enak.' },
+  ].filter(Boolean) as { k: string; t: string; tip: string }[]
+  const lvl2 = (v: number, th: number) => Math.min(1, Math.max(0, (th - v) / th))
+  const vig = Math.max(lvl2(s.hunger, 20) * 0.45, lvl2(s.energy, 20) * 0.4, lvl2(s.health, 50) * 0.6)
+  const vigRed = lvl2(s.health, 50) >= lvl2(s.hunger, 20) && lvl2(s.health, 50) >= lvl2(s.energy, 20)
   const goal = (ok: boolean, t: string) => <li className={ok ? 'ok' : ''}>{ok ? '✓' : '○'} {t}</li>
 
   return (
     <div className="hud">
+      {vig > 0.02 && <div className={'vig' + (vigRed && vig > 0.3 ? ' beat' : '')} style={{ '--a': vig, '--c': vigRed ? '130,10,10' : '10,8,6' } as React.CSSProperties} />}
       <div className="panel tl">
         <div className="who">{s.name} <small>· Hari {day} · {clock(vm)} {periodOf(hourOf(vm))}</small></div>
         <div className="money">{rupiah(s.money)}</div>
@@ -42,12 +52,17 @@ export function HUD() {
         <Bar label="Energi" value={s.energy} color="#f1c40f" />
         <Bar label="Lapar" value={s.hunger} color="#e67e22" />
         <Bar label="Mood" value={s.mood} color="#3498db" />
+        {status.length > 0 && (
+          <div className="chips">
+            {status.map((c) => <span key={c.k} className="chip" title={c.tip}>{c.t}</span>)}
+          </div>
+        )}
       </div>
 
       <div className="panel tr">
         <h4>Target Harian</h4>
         <ul>
-          {goal(g.worked, 'Bekerja di gudang')}
+          {goal(g.worked, 'Bekerja (satu shift)')}
           {goal(g.ate, 'Makan (' + rupiah(MEAL_PRICE) + ')')}
           {goal(g.slept, 'Tidur')}
         </ul>
@@ -57,8 +72,8 @@ export function HUD() {
         </p>
         <h4>Tas</h4>
         <p>🎒 {invCount(s.inv)}/{INV_CAP} barang · tekan <b>I</b></p>
-        <h4>Pekerja Gudang</h4>
-        <p>{lvl.name} · {s.shifts} shift{lvl.next ? ` (naik di ${lvl.next})` : ''}</p>
+        <h4>Karier</h4>
+        <p>{s.shifts} shift · {lvl.name} · {s.hired.length} pekerjaan{s.hired.length === 0 ? ' — lamar di Job Center' : ''}</p>
       </div>
 
       {zone && !s.busy && !s.paused && !s.ui && <div className="prompt"><kbd>E</kbd> {zone.label}</div>}

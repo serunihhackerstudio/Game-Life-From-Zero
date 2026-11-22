@@ -1,12 +1,14 @@
-import { useRef, type MutableRefObject, type ReactNode } from 'react'
+import { useMemo, useRef, useState, type MutableRefObject, type ReactNode } from 'react'
 import { useFrame } from '@react-three/fiber'
-import { RoundedBox } from '@react-three/drei'
+import { Html, RoundedBox } from '@react-three/drei'
 import { Color, type Group } from 'three'
 
-export type PoseName = 'stand' | 'sit' | 'carry' | 'eat' | 'cook' | 'browse' | 'sleep'
-export type Hold = 'none' | 'crate' | 'spoon' | 'spatula' | 'basket'
+export type PoseName = 'stand' | 'sit' | 'carry' | 'eat' | 'cook' | 'browse' | 'sleep' | 'sell' | 'signal' | 'tray'
+export type Hold = 'none' | 'crate' | 'spoon' | 'spatula' | 'basket' | 'paper' | 'tray'
 /** Perintah adegan: pose khusus + benda di tangan. t = detik sejak adegan mulai. */
 export interface Act { pose: PoseName; hold: Hold; t: number; reach: number; fill: number; sitY: number }
+/** Kondisi tubuh (0-100) yang memengaruhi tampilan & gerak karakter. */
+export interface Cond { hunger: number; energy: number; health: number; mood: number }
 export const IDLE_ACT: Act = { pose: 'stand', hold: 'none', t: 0, reach: 0, fill: 0, sitY: 0.29 }
 
 export interface Look {
@@ -48,8 +50,13 @@ function Blk({ w, h, d, p, rot, c, rough = 0.85 }: { w: number; h: number; d: nu
 }
 const G = ({ r, children, p }: { r: React.RefObject<Group>; children?: ReactNode; p?: V3 }) => <group ref={r} position={p}>{children}</group>
 
-export function Humanoid({ look, speedRef, actRef }: { look: Look; speedRef?: MutableRefObject<number>; actRef?: MutableRefObject<Act> }) {
-  const { shirt, pants, skin, hair, female, hoodie, backpack, elder, sandals } = look
+export function Humanoid({ look, speedRef, actRef, condRef }: { look: Look; speedRef?: MutableRefObject<number>; actRef?: MutableRefObject<Act>; condRef?: MutableRefObject<Cond> }) {
+  const { shirt, pants, skin: skinBase, hair, female, hoodie, backpack, elder, sandals } = look
+  const [pale, setPale] = useState(0)
+  const palRef = useRef(0)
+  const skin = useMemo(() => '#' + new Color(skinBase).lerp(new Color('#b6b3a0'), pale * 0.55).getHexString(), [skinBase, pale])
+  const browRefs = useRef<(Group | null)[]>([])
+  const mouthG = useRef<Group>(null), bags = useRef<Group>(null), bubble = useRef<HTMLDivElement>(null)
   const hipL = useRef<Group>(null), hipR = useRef<Group>(null)
   const kneeL = useRef<Group>(null), kneeR = useRef<Group>(null)
   const shL = useRef<Group>(null), shR = useRef<Group>(null)
@@ -60,6 +67,7 @@ export function Humanoid({ look, speedRef, actRef }: { look: Look; speedRef?: Mu
   const crate = useRef<Group>(null), spoon = useRef<Group>(null), spatula = useRef<Group>(null), basket = useRef<Group>(null)
   const fillRefs = useRef<(Group | null)[]>([])
   const packRef = useRef<Group>(null), lids = useRef<Group>(null)
+  const paper = useRef<Group>(null), tray = useRef<Group>(null)
   const shoeRefs = useRef<(Group | null)[]>([])
 
   useFrame((_, dt0) => {
@@ -94,6 +102,56 @@ export function Humanoid({ look, speedRef, actRef }: { look: Look; speedRef?: Mu
       head.current.rotation.set(-0.03 * w - 0.12 * run + Math.sin(s.t * 0.9) * 0.015 * idle, Math.sin(s.t * 0.5) * 0.18 * idle - sn * 0.05 * w, 0)
     }
 
+    // ---- kondisi tubuh: lapar, lelah, sakit, murung tampak pada karakter ----
+    const cd = condRef?.current
+    const lv = (v: number, th: number) => Math.min(1, Math.max(0, (th - v) / th))
+    const hL = cd ? lv(cd.hunger, 35) : 0, eL = cd ? lv(cd.energy, 35) : 0, sL = cd ? lv(cd.health, 60) : 0, mL = cd ? lv(cd.mood, 35) : 0
+    const worst = Math.max(hL, eL * 0.9, sL * 0.7, mL * 0.6)
+    const act0 = actRef?.current
+    const sleeping = act0?.pose === 'sleep'
+    const standing = !act0 || act0.pose === 'stand'
+    const T = s.t
+    if (cd) {
+      const pl = Math.round(Math.max(sL * 0.9, hL * 0.7, eL * 0.4) * 10) / 10
+      if (pl !== palRef.current) { palRef.current = pl; setPale(pl) }
+    }
+    // mata sayu / kantung mata / alis sedih / mulut
+    const closure = sleeping ? 1 : eL * 0.75
+    if (lids.current) { lids.current.visible = sleeping || closure > 0.15; lids.current.position.y = sleeping ? 0 : (1 - closure) * 0.035 }
+    if (bags.current) bags.current.visible = eL > 0.3 || sL > 0.5
+    browRefs.current.forEach((g, i) => { if (g) g.rotation.z = (i === 0 ? 1 : -1) * (-0.12 - 0.5 * mL - 0.2 * eL) })
+    // gelembung ucapan + gerak tubuh bergantung kondisi terparah
+    let msg = ''
+    if (cd) {
+      if (hL > 0.5 && T % 11 < 2.4) msg = 'krucuk… krucuk…'
+      else if (eL > 0.5 && (T + 4) % 13 < 2.4) msg = 'huaaam…'
+      else if (sL > 0.5 && (T + 7) % 10 < 2.0) msg = 'uhuk! uhuk!'
+      else if (mL > 0.6 && (T + 2) % 14 < 2.0) msg = 'huft…'
+    }
+    if (bubble.current) { if (bubble.current.textContent !== msg) bubble.current.textContent = msg; bubble.current.style.opacity = msg ? '1' : '0' }
+    const growl = msg.startsWith('kru'), yawn = msg.startsWith('hua'), cough = msg.startsWith('uhu'), sigh = msg.startsWith('huf')
+    if (mouthG.current) { const open = yawn ? 7 : 1; mouthG.current.scale.y += (open - mouthG.current.scale.y) * 0.25; mouthG.current.position.y = -mL * 0.006 }
+    if (rootG.current) rootG.current.rotation.z = standing && (eL > 0.7 || hL > 0.85) ? Math.sin(T * 1.1) * 0.04 : 0
+    if (standing && worst > 0) {
+      const bl = (g: Group | null, x: number, y: number, z: number, b: number) => {
+        if (!g || b <= 0) return
+        g.rotation.x += (x - g.rotation.x) * b; g.rotation.y += (y - g.rotation.y) * b; g.rotation.z += (z - g.rotation.z) * b
+      }
+      if (torso.current) torso.current.rotation.x += 0.22 * worst + (cough ? 0.14 * Math.abs(Math.sin(T * 13)) : 0) + (growl ? 0.08 : 0)
+      if (head.current) head.current.rotation.x += 0.28 * eL + 0.2 * mL + 0.15 * hL + (sigh ? 0.12 : 0)
+      if (shL.current) shL.current.rotation.x += 0.1 * worst
+      if (shR.current) shR.current.rotation.x += 0.1 * worst
+      // tangan memegang perut saat lapar
+      const cyc = (T / 9) % 1
+      let belly = hL > 0.35 && cyc < 0.4 ? Math.sin((cyc / 0.4) * Math.PI) : 0
+      if (growl) belly = 1
+      if (hL > 0.8) belly = Math.max(belly, 0.85)
+      bl(shR.current, -0.55, 0, 0.5, belly); bl(elR.current, -1.75, 0, 0, belly)
+      // tangan ke mulut saat menguap / batuk
+      if (yawn) { bl(shR.current, -1.75, 0, 0.2, 0.9); bl(elR.current, -2.3, 0, 0, 0.9) }
+      if (cough) { bl(shR.current, -1.55, 0, 0.25, 0.9); bl(elR.current, -2.2, 0, 0, 0.9) }
+    }
+
     // ---- pose adegan (aktivitas) ----
     const a = actRef?.current
     const pose = a?.pose ?? 'stand'
@@ -102,10 +160,11 @@ export function Humanoid({ look, speedRef, actRef }: { look: Look; speedRef?: Mu
     if (spoon.current) spoon.current.visible = hold === 'spoon'
     if (spatula.current) spatula.current.visible = hold === 'spatula'
     if (basket.current) basket.current.visible = hold === 'basket'
+    if (paper.current) paper.current.visible = hold === 'paper'
+    if (tray.current) tray.current.visible = hold === 'tray'
     fillRefs.current.forEach((g, i) => { if (g) g.visible = i < (a?.fill ?? 0) })
     const asleep = pose === 'sleep'
     if (packRef.current) packRef.current.visible = !asleep
-    if (lids.current) lids.current.visible = asleep
     shoeRefs.current.forEach((g) => { if (g) g.visible = !asleep })
     const sitting = pose === 'sit' || pose === 'eat'
     if (rootG.current) rootG.current.position.y = sitting ? -(a?.sitY ?? 0.29) : 0
@@ -140,6 +199,25 @@ export function Humanoid({ look, speedRef, actRef }: { look: Look; speedRef?: Mu
         set(shL.current, -0.3, 0, 0.12); set(elL.current, -1.25)
         set(shR.current, -1.35 * r, 0, -0.08 - 0.05 * r); set(elR.current, -0.25 * r - 0.1)
         torsoRot(0.12 * r); headRot(0.05, Math.sin(t * 0.9) * 0.45 * (1 - r))
+        break
+      }
+      case 'sell': // menjajakan koran: satu tangan terangkat melambai memegang koran
+        set(shR.current, -2.7 + Math.sin(t * 5) * 0.25, 0, -0.1); set(elR.current, -0.25)
+        set(shL.current, -0.5, 0, 0.1); set(elL.current, -1.4)
+        torsoRot(-0.04); headRot(-0.08, Math.sin(t * 0.9) * 0.3)
+        break
+      case 'signal': { // tukang parkir mengarahkan motor
+        const wv = Math.sin(t * 4)
+        set(shR.current, -1.45 + wv * 0.35, 0, -0.35); set(elR.current, -0.5 - wv * 0.3)
+        set(shL.current, 0.1, 0, 0.55); set(elL.current, -1.7)
+        torsoRot(0.02, 0.15); headRot(0, 0.3 + Math.sin(t * 0.6) * 0.15)
+        break
+      }
+      case 'tray': { // pelayan membawa nampan; reach = menyodorkan pesanan
+        const r = a.reach
+        set(shL.current, -0.95 - 0.35 * r, 0, -0.1); set(shR.current, -0.95 - 0.35 * r, 0, 0.1)
+        set(elL.current, -1.25 + 0.5 * r); set(elR.current, -1.25 + 0.5 * r)
+        torsoRot(0.02 + 0.06 * r)
         break
       }
       case 'sleep': // berbaring telentang: tangan di sisi badan, kepala menoleh sedikit
@@ -211,6 +289,11 @@ export function Humanoid({ look, speedRef, actRef }: { look: Look; speedRef?: Mu
               <Ball r={0.03} p={[0, -0.1, 0]} s={[1, 0.5, 1.3]} c="#cfd3d8" seg={8} />
               <Ball r={0.022} p={[0, -0.098, 0.005]} s={[1, 0.5, 1.2]} c="#f6f1e4" seg={8} />
             </group>
+            <group ref={paper} position={[0, -0.3, 0.02]} rotation={[0, 0, 0]} visible={false}>
+              <Blk w={0.24} h={0.32} d={0.02} p={[0, -0.06, 0]} c="#e9e4d6" rough={0.9} />
+              <Blk w={0.2} h={0.05} d={0.025} p={[0, 0.05, 0]} c="#2a2a2a" />
+              {[-0.01, -0.06, -0.11].map((y) => <Blk key={y} w={0.18} h={0.012} d={0.025} p={[0, y, 0]} c="#9a958a" />)}
+            </group>
             <group ref={spatula} position={[0, -0.3, 0.05]} rotation={[-0.6, 0, 0]} visible={false}>
               <Blk w={0.02} h={0.26} d={0.02} p={[0, -0.05, 0]} c="#6b4a2f" />
               <Blk w={0.09} h={0.1} d={0.012} p={[0, -0.2, 0]} c="#8a5a35" />
@@ -230,6 +313,11 @@ export function Humanoid({ look, speedRef, actRef }: { look: Look; speedRef?: Mu
   return (
     <group scale={0.97}>
       <group ref={rootG}>
+      {condRef && (
+        <Html position={[0, 2.05, 0]} center distanceFactor={9} style={{ pointerEvents: 'none' }}>
+          <div ref={bubble} className="bubble" style={{ opacity: 0 }} />
+        </Html>
+      )}
       {leg(1, hipL, kneeL)}
       {leg(-1, hipR, kneeR)}
       <Ball r={0.13} p={[0, 0.95, 0]} s={[1.2, 0.75, 0.85]} c={pants} rough={0.9} />
@@ -270,9 +358,12 @@ export function Humanoid({ look, speedRef, actRef }: { look: Look; speedRef?: Mu
             <group key={sd}>
               <Ball r={0.02} p={[sd * 0.04, 0.012, 0.094]} s={[1.25, 0.85, 0.5]} c="#f6f4ee" rough={0.3} seg={12} />
               <Ball r={0.0115} p={[sd * 0.04, 0.012, 0.102]} s={[1, 1, 0.6]} c="#1a1210" rough={0.2} seg={10} />
-              <Blk w={0.042} h={0.008} d={0.01} p={[sd * 0.042, 0.048, 0.098]} rot={[0, 0, sd * -0.12]} c={elder ? '#bdbdbd' : hairCol} />
+              <group ref={(g) => { browRefs.current[sd === 1 ? 0 : 1] = g }} position={[sd * 0.042, 0.048, 0.098]}><Blk w={0.042} h={0.008} d={0.01} c={elder ? '#bdbdbd' : hairCol} /></group>
             </group>
           ))}
+          <group ref={bags} visible={false}>
+            {[1, -1].map((sd) => <Ball key={sd} r={0.02} p={[sd * 0.04, -0.014, 0.097]} s={[1.3, 0.45, 0.4]} c={shade(skin, 0.68)} seg={8} />)}
+          </group>
           <group ref={lids} visible={false}>
             {[1, -1].map((sd) => (
               <group key={sd}>
@@ -282,7 +373,7 @@ export function Humanoid({ look, speedRef, actRef }: { look: Look; speedRef?: Mu
             ))}
           </group>
           <Ball r={0.019} p={[0, -0.018, 0.106]} s={[1, 1.25, 1.2]} c={skinDark} rough={0.6} seg={12} />
-          <Blk w={0.042} h={0.007} d={0.008} p={[0, -0.062, 0.098]} c={female ? '#a23d4a' : '#8c4a44'} rough={0.5} />
+          <group ref={mouthG} position={[0, -0.062, 0.098]}><Blk w={0.042} h={0.007} d={0.008} c={female ? '#a23d4a' : '#6e2f2f'} rough={0.5} /></group>
           {elder && <Blk w={0.06} h={0.014} d={0.012} p={[0, -0.047, 0.1]} c="#cfcfcf" />}
 
           {/* rambut */}
@@ -302,6 +393,17 @@ export function Humanoid({ look, speedRef, actRef }: { look: Look; speedRef?: Mu
           )}
         </G>
 
+        <group ref={tray} visible={false}>
+          <Blk w={0.56} h={0.025} d={0.36} p={[0, 0.2, 0.4]} c="#c9ccd1" rough={0.4} />
+          {[-0.14, 0.14].map((x) => (
+            <group key={x}>
+              <Ball p={[x, 0.235, 0.4]} r={0.095} s={[1, 0.18, 1]} c="#ffffff" rough={0.3} seg={12} />
+              <Ball p={[x, 0.26, 0.4]} r={0.06} s={[1, 0.55, 1]} c="#f6f1e4" seg={10} />
+              <Ball p={[x + 0.03, 0.275, 0.38]} r={0.022} c="#c0392b" seg={8} />
+            </group>
+          ))}
+          <Blk w={0.07} h={0.13} d={0.07} p={[0.02, 0.28, 0.48]} c="#d98a2d" />
+        </group>
         <group ref={crate} visible={false}>
           <Blk w={0.44} h={0.3} d={0.36} p={[0, 0.2, 0.34]} c="#c99055" />
           <Blk w={0.46} h={0.04} d={0.38} p={[0, 0.2, 0.34]} c="#a8722f" />

@@ -20,7 +20,7 @@ button { font: inherit; cursor: pointer; }
 .genders i { width: 14px; height: 14px; border-radius: 50%; display: inline-block; }
 .small { font-size: 12px; opacity: .6; margin: 4px 0 0; line-height: 1.5; }
 
-.hud { position: fixed; inset: 0; pointer-events: none; }
+.hud { position: fixed; inset: 0; pointer-events: none; z-index: 2147483000; }
 .panel { position: absolute; padding: 12px 14px; border-radius: 12px; background: rgba(10,14,28,.62); backdrop-filter: blur(6px); font-size: 13px; }
 .tl { top: 12px; left: 12px; width: 230px; }
 .tr { top: 12px; right: 12px; width: 250px; }
@@ -79,3 +79,14 @@ kbd { background: #ffd23f; color: #222; padding: 2px 8px; border-radius: 6px; fo
 .overlay.side .sheet { pointer-events: auto; max-width: 420px; }
 .zzz { font-size: 30px; font-weight: 800; color: #cfe4ff; text-shadow: 0 2px 6px #000; animation: zz 2s ease-in-out infinite; }
 @keyframes zz { 0% { transform: translateY(0); opacity: 0; } 30% { opacity: 1; } 100% { transform: translateY(-30px); opacity: 0; } }
+
+/* efek kondisi tubuh */
+.bar.crit span { color: #ff8a7a; }
+.bar.crit .track { animation: crit 1s ease-in-out infinite; }
+@keyframes crit { 50% { box-shadow: 0 0 0 2px rgba(255,90,70,.7); } }
+.chips { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 8px; }
+.chip { font-size: 11px; padding: 3px 8px; border-radius: 999px; background: rgba(231,76,60,.22); border: 1px solid rgba(231,76,60,.5); }
+.vig { position: absolute; inset: 0; pointer-events: none; background: radial-gradient(ellipse at center, rgba(var(--c),0) 45%, rgba(var(--c),var(--a)) 100%); }
+.vig.beat { animation: beat 1.2s ease-in-out infinite; }
+@keyframes beat { 0%, 100% { opacity: .75; } 50% { opacity: 1; } }
+.bubble { background: #fff; color: #222; padding: 3px 10px; border-radius: 12px; font-size: 13px; font-weight: 700; white-space: nowrap; transition: opacity .25s; box-shadow: 0 2px 8px rgba(0,0,0,.35); }

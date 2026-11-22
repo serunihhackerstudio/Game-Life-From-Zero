@@ -1,13 +1,15 @@
 import { useEffect, useMemo, useRef } from 'react'
 import { useFrame, useThree } from '@react-three/fiber'
 import { Environment, Html, Lightformer } from '@react-three/drei'
-import { Color, DirectionalLight, Fog, Group, HemisphereLight, Mesh, MeshStandardMaterial, PointLight, Sprite } from 'three'
+import { Color, DirectionalLight, DoubleSide, Fog, Group, HemisphereLight, Mesh, MeshStandardMaterial, PointLight, Sprite } from 'three'
 import { KOS_WALL_H, KOS_WALLS, LAMPS, TREES, ZONES } from './data'
 import { daylight, registerGlow, updateGlow } from './glow'
 import { Humanoid } from './Humanoid'
 import { Ball, Barrel, Bin, Bulb, Bx, Cart, Cyl, Flowers, Motorbike, Pallet, Plant, Pole, Sign, Stool, TBox, Tree, Truck, Window, Wire } from './props'
 import { asphalt, cloudTex, facade, facadeEmissive, grass, hazard, metal, pavement, plaster, roofTile, rollerDoor, stripes, tiled, wood } from './textures'
 import { Traffic } from './Traffic'
+import { PathNpc, SceneBike, SeatedNpc } from './SceneActors'
+import { KORAN_CUSTOMER } from './scenes'
 import { useGame, visMinute } from './store'
 
 const Label = ({ pos, text }: { pos: [number, number, number]; text: string }) => (
@@ -478,6 +480,15 @@ function SceneProps() {
       ;((g.children[0] as Mesh).material as MeshStandardMaterial).opacity = 0.5 * (1 - u)
     })
   })
+  if (kind === 'koran') return <PathNpc route={KORAN_CUSTOMER} speed={1.5} delay={0.8} look={{ shirt: '#8e44ad', pants: '#34495e', skin: '#c68e64', hair: '#222' }} />
+  if (kind === 'parkir') return <SceneBike kind="parkir" />
+  if (kind === 'kurir') return <SceneBike kind="kurir" />
+  if (kind === 'pelayan') return (
+    <group>
+      <SeatedNpc p={[-1.2, 0, -9.28]} look={{ shirt: '#c0392b', pants: '#2c3e50', skin: '#b98660', hair: '#111' }} />
+      <SeatedNpc p={[1.2, 0, -9.28]} phase={1.3} look={{ shirt: '#2e8b6e', pants: '#5d6d7e', skin: '#d4a07a', hair: '#241510', female: true }} />
+    </group>
+  )
   if (kind === 'eat') return (
     <group>
       <Cyl p={[1.25, 1.2, -10.0]} r={0.17} h={0.02} c="#ffffff" rough={0.3} />
@@ -554,6 +565,100 @@ function Street() {
   )
 }
 
+/** Job Center: kantor lowongan kerja dengan papan pengumuman di dinding. */
+function JobCenter() {
+  const wall = useMemo(() => plaster('#dfe7ee'), [])
+  const tin = useMemo(() => metal('#9aa5b0'), [])
+  const glass = useMemo(() => registerGlow(new MeshStandardMaterial({ color: '#a9d2ea', roughness: 0.1, metalness: 0.2, transparent: true, opacity: 0.5, emissive: '#fff0c8', emissiveIntensity: 0 }), 1.0), [])
+  const papers = ['#f1c40f', '#ecf0f1', '#e74c3c', '#3498db', '#2ecc71', '#f39c12']
+  return (
+    <group>
+      <TBox x={-8.3} z={-13} w={6} h={3.4} d={5} tex={wall} mpt={2.2} />
+      <Bx x={-8.3} y={3.4} z={-13} w={6.3} h={0.3} d={5.3} c="#0f6b4f" />
+      <TBox x={-8.3} y={3.7} z={-13} w={5.8} h={0.1} d={4.8} tex={tin} mpt={1.5} metal={0.4} rough={0.6} />
+      <Bx x={-8.3} y={0} z={-10.46} w={6} h={0.5} d={0.06} c="#0f6b4f" />
+      {/* pintu kaca + bingkai */}
+      <mesh position={[-8.3, 1.2, -10.47]} material={glass}><planeGeometry args={[1.5, 2.2]} /></mesh>
+      {[-9.07, -7.53].map((x) => <Bx key={x} x={x} y={0.1} z={-10.5} w={0.08} h={2.3} d={0.1} c="#0f6b4f" />)}
+      <Bx x={-8.3} y={2.3} z={-10.5} w={1.6} h={0.1} d={0.1} c="#0f6b4f" />
+      <Bx x={-8.3} y={0.1} z={-10.5} w={0.04} h={2.2} d={0.06} c="#0f6b4f" />
+      <Bx x={-8.55} y={1.0} z={-10.42} w={0.04} h={0.4} d={0.05} c="#cfd6dc" metal={0.6} />
+      <Bx x={-8.05} y={1.0} z={-10.42} w={0.04} h={0.4} d={0.05} c="#cfd6dc" metal={0.6} />
+      <Window p={[-10.5, 1.5, -10.45]} w={1.3} h={1.0} frame="#0f6b4f" />
+      {/* papan nama */}
+      <Sign text="JOB CENTER" sub="Lowongan Kerja · Pelatihan · Pelamar Umum" w={4.6} h={0.95} p={[-8.3, 2.95, -10.47]} bg="#0f6b4f" fg="#ffffff" />
+      {/* papan lowongan di dinding */}
+      <Bx x={-5.95} y={0.55} z={-10.45} w={1.5} h={1.35} d={0.06} c="#6b4a2f" />
+      <Sign text="LOWONGAN" w={1.3} h={0.24} p={[-5.95, 1.78, -10.4]} bg="#c0392b" fg="#fff" glow={0.3} />
+      {papers.map((c, i) => <Bx key={i} x={-6.4 + (i % 3) * 0.45} y={0.75 + Math.floor(i / 3) * 0.55} z={-10.4} w={0.34} h={0.45} d={0.015} c={c} rough={0.9} />)}
+      <Plant p={[-10.7, 0.0, -9.85]} s={1.1} />
+      <Bx x={-6.0} y={0} z={-9.8} w={1.5} h={0.05} d={0.5} c="#b9b8b0" />
+      <Bulb p={[-10.9, 2.7, -10.2]} r={0.09} />
+      <Bulb p={[-5.7, 2.7, -10.2]} r={0.09} />
+      <pointLight position={[-8.3, 1.8, -9.4]} intensity={6} distance={6} color="#ffe9c0" />
+    </group>
+  )
+}
+
+/** Lapak koran & majalah di pojok barat jalan. */
+function KoranStand() {
+  const woodT = useMemo(() => wood('#8a5a35'), [])
+  const st = useMemo(() => stripes('#2c6fb5', '#f4efe6'), [])
+  const mags = ['#e74c3c', '#3498db', '#f1c40f', '#2ecc71', '#9b59b6', '#e67e22']
+  return (
+    <group>
+      <TBox x={-30.2} z={-9.2} w={2.2} h={1.0} d={0.8} tex={woodT} mpt={1} />
+      <Bx x={-30.2} y={1.0} z={-9.2} w={2.3} h={0.05} d={0.9} c="#6b4a2f" />
+      {[0, 1, 2].map((i) => <Bx key={i} x={-30.9 + i * 0.05} y={1.05 + i * 0.05} z={-9.1} w={0.7} h={0.05} d={0.5} c={i % 2 ? '#d9d4c5' : '#ece8da'} />)}
+      {[0, 1, 2, 3].map((i) => <Bx key={i} x={-29.5 + (i % 2) * 0.05} y={1.05 + Math.floor(i / 2) * 0.06} z={-9.1} w={0.6} h={0.05} d={0.45} c="#e4dfd0" />)}
+      <Bx x={-30.2} y={0.1} z={-9.78} w={2.4} h={2.0} d={0.08} c="#7a5230" />
+      {mags.map((c, i) => <Bx key={i} x={-31.0 + (i % 3) * 0.8} y={1.2 + Math.floor(i / 3) * 0.55} z={-9.7} w={0.55} h={0.45} d={0.02} c={c} rough={0.8} />)}
+      <Bx x={-31.4} y={0} z={-8.7} w={0.08} h={2.3} d={0.08} c="#4a3322" />
+      <Bx x={-29.0} y={0} z={-8.7} w={0.08} h={2.3} d={0.08} c="#4a3322" />
+      <mesh position={[-30.2, 2.5, -9.1]} castShadow><coneGeometry args={[1.6, 0.45, 16]} /><meshStandardMaterial map={tiled(st, 3, 1)} roughness={0.8} side={DoubleSide} /></mesh>
+      <Sign text="KORAN & MAJALAH" w={1.9} h={0.38} p={[-30.2, 0.62, -8.78]} bg="#f4efe6" fg="#1f3f6e" glow={0.2} />
+    </group>
+  )
+}
+
+/** Kios ekspedisi "Kilat Ekspres": tempat kurir mengambil paket. */
+function Ekspedisi() {
+  const wall = useMemo(() => plaster('#f4efe6'), [])
+  const tin = useMemo(() => metal('#9aa5b0'), [])
+  return (
+    <group>
+      <TBox x={-34.5} z={-9.9} w={4} h={3.0} d={2.2} tex={wall} mpt={2} />
+      <TBox x={-34.5} y={3.0} z={-9.9} w={4.4} h={0.1} d={2.6} tex={tin} mpt={1.5} metal={0.4} rough={0.6} />
+      <Bx x={-34.5} y={0} z={-8.78} w={4} h={0.5} d={0.05} c="#c0392b" />
+      <Bx x={-34.5} y={1.0} z={-8.78} w={2.4} h={1.1} d={0.05} c="#2a1e16" />
+      <Bx x={-34.5} y={0.9} z={-8.45} w={2.6} h={0.08} d={0.6} c="#6b4a2f" />
+      <Sign text="KILAT EKSPRES" sub="Antar Paket Cepat & Aman" w={3.4} h={0.8} p={[-34.5, 2.45, -8.77]} bg="#c0392b" fg="#ffffff" />
+      {[[-36.1, -8.4, 0.5], [-35.5, -8.3, 0.4], [-36.0, -8.4, 0.9]].map(([x, z, y], i) => <Bx key={i} x={x} y={y - 0.5} z={z} w={0.55} h={0.4} d={0.5} c={['#c99055', '#d4a066', '#b9803f'][i]} />)}
+      <Bx x={-32.9} y={0} z={-8.4} w={0.6} h={0.45} d={0.5} c="#c99055" />
+      <Bx x={-32.9} y={0.45} z={-8.4} w={0.5} h={0.35} d={0.45} c="#d4a066" />
+      <Bulb p={[-33.0, 2.3, -8.7]} r={0.09} />
+    </group>
+  )
+}
+
+/** Rambu & kerucut parkir di depan warung. */
+function ParkirProps() {
+  return (
+    <group>
+      <Cyl p={[1.8, 1.0, -5.6]} r={0.04} h={2.0} c="#333" />
+      <Sign text="PARKIR MOTOR" sub="Rp2.000" w={0.9} h={0.62} p={[1.8, 2.2, -5.54]} bg="#1f5e8c" fg="#fff" glow={0.4} />
+      <Sign text="PARKIR MOTOR" sub="Rp2.000" w={0.9} h={0.62} p={[1.8, 2.2, -5.66]} ry={Math.PI} bg="#1f5e8c" fg="#fff" glow={0.4} />
+      {[[4.9, -4.5], [6.0, -4.5], [3.9, -4.5]].map(([x, z], i) => (
+        <group key={i} position={[x, 0, z]}>
+          <Bx x={0} z={0} w={0.34} h={0.03} d={0.34} c="#2a2a2a" />
+          <mesh position={[0, 0.25, 0]} castShadow><coneGeometry args={[0.15, 0.42, 12]} /><meshStandardMaterial color="#e8601a" roughness={0.6} /></mesh>
+          <mesh position={[0, 0.27, 0]}><cylinderGeometry args={[0.095, 0.105, 0.06, 12]} /><meshStandardMaterial color="#ffffff" /></mesh>
+        </group>
+      ))}
+    </group>
+  )
+}
+
 export function World() {
   return (
     <>
@@ -565,7 +670,7 @@ export function World() {
         <Lightformer form="rect" intensity={0.8} position={[8, 3, 4]} rotation-y={-Math.PI / 2} scale={[8, 4, 1]} color="#ffe9c7" />
       </Environment>
       <Street />
-      <Kos /><Warung /><Kelontong /><Pasar /><Gudang /><Taman /><Trees /><Lamps /><LampLights /><Utilities /><Backdrop /><Markers />
+      <Kos /><Warung /><JobCenter /><KoranStand /><Ekspedisi /><ParkirProps /><Kelontong /><Pasar /><Gudang /><Taman /><Trees /><Lamps /><LampLights /><Utilities /><Backdrop /><Markers />
       <Cart p={[-7.2, 0, -7.4]} ry={0.1} />
       <SceneProps />
       <group position={[-10.5, 0, -6.2]} rotation={[0, 0.15, 0]}><Motorbike color="#2980b9" /></group>
