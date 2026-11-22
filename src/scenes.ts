@@ -90,6 +90,14 @@ export function sceneFrame(sc: SceneInfo, t: number, bagCount: number): Frame {
       f.look = [f.x * 0.5 + 11.0, 1.1, -8.7]
       break
     }
+    case 'drink':
+      f.x = -14.75; f.z = -12.6; f.rotY = PI / 2; f.pose = 'drink'; f.hold = 'glass'
+      f.cam = [-16.5, 1.55, -11.2 + t * 0.03]; f.look = [-14.5, 1.3, -12.6]
+      break
+    case 'mandi':
+      f.x = -24.55; f.z = -12.7; f.rotY = 0.45; f.pose = 'bathe'; f.hold = 'gayung'
+      f.cam = [-24.1 + Math.sin(t * 0.3) * 0.25, 1.75, -9.0]; f.look = [-24.7, 1.2, -12.8]
+      break
     case 'talk': {
       const n = NPCS[sc.npc!]
       const px = playerPos.x, pz = playerPos.z

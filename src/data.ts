@@ -1,5 +1,5 @@
 // Data statis dunia "Kota Harapan": zona interaksi, collider, batas peta.
-export type ZoneId = 'bed' | 'pakbudi' | 'warung' | 'gudang' | 'taman' | 'kelontong' | 'pasar' | 'masak' | 'sari' | 'jobcenter' | 'koran' | 'parkir' | 'pelayan' | 'kurir' | 'nasgor' | 'ojek' | 'satpam'
+export type ZoneId = 'bed' | 'pakbudi' | 'warung' | 'gudang' | 'taman' | 'kelontong' | 'pasar' | 'masak' | 'minum' | 'mandi' | 'sari' | 'jobcenter' | 'koran' | 'parkir' | 'pelayan' | 'kurir' | 'nasgor' | 'ojek' | 'satpam'
 
 export interface Zone { id: ZoneId; x: number; z: number; r: number; label: string }
 export interface Box { x: number; z: number; w: number; d: number } // pusat + ukuran
@@ -16,6 +16,8 @@ export const ZONES: Zone[] = [
   { id: 'kelontong', x: 9.6, z: -8.9, r: 2.2, label: 'Bicara dengan Bu Rina (kelontong)' },
   { id: 'pasar', x: 22.5, z: 8.4, r: 2.4, label: 'Belanja di Pasar' },
   { id: 'masak', x: -16.25, z: -16.3, r: 1.6, label: 'Memasak (kompor)' },
+  { id: 'minum', x: -14.4, z: -12.6, r: 1.3, label: 'Minum air galon' },
+  { id: 'mandi', x: -24.7, z: -10.9, r: 1.6, label: 'Mandi (kamar mandi bersama)' },
   { id: 'sari', x: -4.5, z: -8.6, r: 1.7, label: 'Ngobrol dengan Bu Sari' },
   { id: 'jobcenter', x: -8.6, z: -8.8, r: 2.2, label: 'Bicara dengan Pak Dimas (Job Center)' },
   { id: 'koran', x: -30.2, z: -6.9, r: 2.0, label: 'Jual koran' },
@@ -77,6 +79,11 @@ export const COLLIDERS: Box[] = [
   { x: 12.55, z: -10.05, w: 0.9, d: 0.8 }, // kulkas minuman
   { x: 14.0, z: -10.2, w: 0.9, d: 0.8 }, // ATM
   { x: -16.25, z: -17.75, w: 1.1, d: 0.5 }, // kompor kos
+  { x: -13.7, z: -12.6, w: 0.5, d: 0.5 }, // dispenser air
+  { x: -24.7, z: -14.1, w: 2.6, d: 0.2 }, // kamar mandi: belakang
+  { x: -25.9, z: -13.0, w: 0.2, d: 2.4 }, // kiri
+  { x: -23.5, z: -13.0, w: 0.2, d: 2.4 }, // kanan
+  { x: -25.25, z: -13.55, w: 0.9, d: 0.7 }, // bak mandi
   { x: -8.3, z: -13, w: 6, d: 5 }, // Job Center
   { x: -30.2, z: -9.2, w: 2.4, d: 1.2 }, // lapak koran
   { x: -34.5, z: -9.9, w: 4, d: 2.2 }, // kios ekspedisi

@@ -14,7 +14,7 @@ export function Player() {
   const group = useRef<Group>(null)
   const speedRef = useRef(0)
   const actRef = useRef<Act>({ ...IDLE_ACT })
-  const condRef = useRef<Cond>({ hunger: 100, energy: 100, health: 100, mood: 75 })
+  const condRef = useRef<Cond>({ hunger: 100, energy: 100, health: 100, mood: 75, thirst: 100, hygiene: 100 })
   const camLook = useRef(new Vector3(playerPos.x, 1.3, playerPos.z))
   const keys = useRef<Record<string, boolean>>({})
   const yaw = useRef(Math.PI)
@@ -22,6 +22,7 @@ export function Player() {
   const camTarget = useRef(new Vector3())
   const tmpLook = useRef(new Vector3())
   const gender = useGame((s) => s.gender)
+  const bathing = useGame((s) => s.scene?.kind === 'mandi')
   const { gl } = useThree()
 
   // hook debug (hanya aktif dengan ?debug) untuk uji visual
@@ -63,12 +64,13 @@ export function Player() {
     const dt = Math.min(delta, 0.05)
     const s = useGame.getState()
 
-    Object.assign(condRef.current, { hunger: s.hunger, energy: s.energy, health: s.health, mood: s.mood })
+    Object.assign(condRef.current, { hunger: s.hunger, energy: s.energy, health: s.health, mood: s.mood, thirst: s.thirst, hygiene: s.hygiene })
 
     // ---- adegan aktivitas: karakter + kamera dikendalikan oleh scenes.ts ----
     if (s.scene) {
       const t = (performance.now() - s.scene.t0) / 1000
       const f = sceneFrame(s.scene, t, invCount(s.inv))
+      if (s.scene.kind === 'mandi') condRef.current.hygiene = s.hygiene + (100 - s.hygiene) * Math.min(1, Math.max(0, (t - 1.5) / 3))
       g.visible = !f.hidden
       g.position.set(f.x, f.y, f.z)
       g.rotation.set(f.rotX, f.rotY, 0)
@@ -101,7 +103,7 @@ export function Player() {
         vx /= len; vz /= len
         // kondisi tubuh memperlambat gerak: lapar, lelah, sakit
         const lv = (v: number, th: number) => Math.min(1, Math.max(0, (th - v) / th))
-        const slow = Math.max(0.5, 1 - 0.3 * lv(s.energy, 35) - 0.25 * lv(s.hunger, 35) - 0.25 * lv(s.health, 60))
+        const slow = Math.max(0.5, 1 - 0.3 * lv(s.energy, 35) - 0.25 * lv(s.hunger, 35) - 0.25 * lv(s.health, 60) - 0.15 * lv(s.thirst, 35))
         const running = !!(k.ShiftLeft || k.ShiftRight) && s.energy > 5 && s.hunger > 0
         speed = (running ? RUN : WALK) * slow
         const [nx, nz] = resolve(playerPos.x + vx * speed * dt, playerPos.z + vz * speed * dt, RADIUS)
@@ -136,9 +138,13 @@ export function Player() {
     state.camera.lookAt(camLook.current)
   })
 
-  const look: Look = gender === 'male'
+  const base: Look = gender === 'male'
     ? { shirt: '#3a6ea5', pants: '#3b4d66', skin: '#c68e64', hair: '#17110d', hoodie: true, backpack: true }
     : { shirt: '#b5496b', pants: '#46607f', skin: '#d9a47a', hair: '#2b1a12', female: true, hoodie: true, backpack: true }
+  // saat mandi: tanpa hoodie & tas, berbalut handuk, bersandal
+  const look: Look = bathing
+    ? { ...base, bare: true, hoodie: false, backpack: false, sandals: true, shirt: gender === 'male' ? base.skin : '#5ab0d9' }
+    : base
 
   return (
     <group ref={group}>

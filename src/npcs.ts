@@ -6,7 +6,7 @@ export type DialogAct = 'end' | 'rent' | 'shop' | 'jobs' | 'eat' | 'chat'
 /** Konteks yang dibaca teks dialog (murni data, tanpa efek samping). */
 export interface Ctx {
   name: string; day: number; hour: number; money: number
-  hunger: number; energy: number; health: number; mood: number
+  hunger: number; energy: number; health: number; mood: number; thirst: number; hygiene: number
   aff: number; rentDue: number; shifts: number; hired: number
   talked: boolean // sudah mengobrol hari ini
 }
@@ -28,7 +28,9 @@ export const mealDiscount = (aff: number) => (aff >= 3 ? 2000 : 0)
 
 const pick = <T,>(a: T[], c: Ctx) => a[(c.day * 3 + c.aff) % a.length]
 const care = (c: Ctx, who: string) =>
-  c.hunger < 25 ? `${who}: "Muka kamu pucat sekali, ${c.name}. Itu perutnya sampai bunyi. Makan dulu sana."`
+  c.hygiene < 25 ? `${who}: "Maaf ya, ${c.name}, tapi kamu bau sekali. Mandi dulu sana, baru ngobrol lagi."`
+  : c.thirst < 20 ? `${who}: "Bibirmu kering begitu. Kamu haus, kan? Minum dulu, jangan ditahan."`
+  : c.hunger < 25 ? `${who}: "Muka kamu pucat sekali, ${c.name}. Itu perutnya sampai bunyi. Makan dulu sana."`
   : c.energy < 25 ? `${who}: "Matamu merah begitu. Jangan dipaksa kerja terus, ${c.name}. Tidur dulu."`
   : c.health < 50 ? `${who}: "Kamu kelihatan kurang sehat. Jaga badan ya, nanti malah tidak bisa kerja."`
   : ''

@@ -3,12 +3,12 @@ import { useFrame } from '@react-three/fiber'
 import { Html, RoundedBox } from '@react-three/drei'
 import { Color, type Group } from 'three'
 
-export type PoseName = 'stand' | 'sit' | 'carry' | 'eat' | 'cook' | 'browse' | 'sleep' | 'sell' | 'signal' | 'tray' | 'talk' | 'patrol'
-export type Hold = 'none' | 'crate' | 'spoon' | 'spatula' | 'basket' | 'paper' | 'tray' | 'torch'
+export type PoseName = 'stand' | 'sit' | 'carry' | 'eat' | 'cook' | 'browse' | 'sleep' | 'sell' | 'signal' | 'tray' | 'talk' | 'patrol' | 'bathe' | 'drink'
+export type Hold = 'none' | 'crate' | 'spoon' | 'spatula' | 'basket' | 'paper' | 'tray' | 'torch' | 'gayung' | 'glass'
 /** Perintah adegan: pose khusus + benda di tangan. t = detik sejak adegan mulai. */
 export interface Act { pose: PoseName; hold: Hold; t: number; reach: number; fill: number; sitY: number }
 /** Kondisi tubuh (0-100) yang memengaruhi tampilan & gerak karakter. */
-export interface Cond { hunger: number; energy: number; health: number; mood: number }
+export interface Cond { hunger: number; energy: number; health: number; mood: number; thirst: number; hygiene: number }
 export const IDLE_ACT: Act = { pose: 'stand', hold: 'none', t: 0, reach: 0, fill: 0, sitY: 0.29 }
 
 export interface Look {
@@ -18,6 +18,7 @@ export interface Look {
   backpack?: boolean
   elder?: boolean      // kumis + rambut pendek
   sandals?: boolean
+  bare?: boolean       // mandi: badan telanjang berbalut handuk (tanpa kerah/kancing, lengan kulit)
 }
 
 const shade = (c: string, f: number) => '#' + new Color(c).multiplyScalar(f).getHexString()
@@ -51,10 +52,14 @@ function Blk({ w, h, d, p, rot, c, rough = 0.85 }: { w: number; h: number; d: nu
 const G = ({ r, children, p }: { r: React.RefObject<Group>; children?: ReactNode; p?: V3 }) => <group ref={r} position={p}>{children}</group>
 
 export function Humanoid({ look, speedRef, actRef, condRef }: { look: Look; speedRef?: MutableRefObject<number>; actRef?: MutableRefObject<Act>; condRef?: MutableRefObject<Cond> }) {
-  const { shirt, pants, skin: skinBase, hair, female, hoodie, backpack, elder, sandals } = look
+  const { shirt: shirtIn, pants, skin: skinBase, hair, female, hoodie, backpack, elder, sandals, bare } = look
+  const shirt = shirtIn
   const [pale, setPale] = useState(0)
-  const palRef = useRef(0)
-  const skin = useMemo(() => '#' + new Color(skinBase).lerp(new Color('#b6b3a0'), pale * 0.55).getHexString(), [skinBase, pale])
+  const [dirt, setDirt] = useState(0)
+  const palRef = useRef(0), dirtRef = useRef(0)
+  const skin = useMemo(() => '#' + new Color(skinBase).lerp(new Color('#b6b3a0'), pale * 0.55).lerp(new Color('#8a7a52'), dirt * 0.4).getHexString(), [skinBase, pale, dirt])
+  const flies = useRef<(Group | null)[]>([]), sweat = useRef<(Group | null)[]>([])
+  const gayung = useRef<Group>(null), glass = useRef<Group>(null)
   const browRefs = useRef<(Group | null)[]>([])
   const mouthG = useRef<Group>(null), bags = useRef<Group>(null), bubble = useRef<HTMLDivElement>(null)
   const hipL = useRef<Group>(null), hipR = useRef<Group>(null)
@@ -106,7 +111,8 @@ export function Humanoid({ look, speedRef, actRef, condRef }: { look: Look; spee
     const cd = condRef?.current
     const lv = (v: number, th: number) => Math.min(1, Math.max(0, (th - v) / th))
     const hL = cd ? lv(cd.hunger, 35) : 0, eL = cd ? lv(cd.energy, 35) : 0, sL = cd ? lv(cd.health, 60) : 0, mL = cd ? lv(cd.mood, 35) : 0
-    const worst = Math.max(hL, eL * 0.9, sL * 0.7, mL * 0.6)
+    const tL = cd ? lv(cd.thirst, 35) : 0, yL = cd ? lv(cd.hygiene, 35) : 0
+    const worst = Math.max(hL, eL * 0.9, sL * 0.7, mL * 0.6, tL * 0.8, yL * 0.4)
     const act0 = actRef?.current
     const sleeping = act0?.pose === 'sleep'
     const standing = !act0 || act0.pose === 'stand'
@@ -114,6 +120,8 @@ export function Humanoid({ look, speedRef, actRef, condRef }: { look: Look; spee
     if (cd) {
       const pl = Math.round(Math.max(sL * 0.9, hL * 0.7, eL * 0.4) * 10) / 10
       if (pl !== palRef.current) { palRef.current = pl; setPale(pl) }
+      const dr = Math.round(yL * 10) / 10
+      if (dr !== dirtRef.current) { dirtRef.current = dr; setDirt(dr) }
     }
     // mata sayu / kantung mata / alis sedih / mulut
     const closure = sleeping ? 1 : eL * 0.75
@@ -126,10 +134,12 @@ export function Humanoid({ look, speedRef, actRef, condRef }: { look: Look; spee
       if (hL > 0.5 && T % 11 < 2.4) msg = 'krucuk… krucuk…'
       else if (eL > 0.5 && (T + 4) % 13 < 2.4) msg = 'huaaam…'
       else if (sL > 0.5 && (T + 7) % 10 < 2.0) msg = 'uhuk! uhuk!'
+      else if (tL > 0.5 && (T + 9) % 12 < 2.2) msg = 'haus… glek'
+      else if (yL > 0.5 && (T + 5) % 15 < 2.2) msg = 'hmm… bau, ya?'
       else if (mL > 0.6 && (T + 2) % 14 < 2.0) msg = 'huft…'
     }
     if (bubble.current) { if (bubble.current.textContent !== msg) bubble.current.textContent = msg; bubble.current.style.opacity = msg ? '1' : '0' }
-    const growl = msg.startsWith('kru'), yawn = msg.startsWith('hua'), cough = msg.startsWith('uhu'), sigh = msg.startsWith('huf')
+    const growl = msg.startsWith('kru'), yawn = msg.startsWith('hua'), cough = msg.startsWith('uhu'), sigh = msg.startsWith('huf'), thirsty = msg.startsWith('haus'), sniff = msg.startsWith('hmm')
     if (mouthG.current) { const open = yawn ? 7 : 1; mouthG.current.scale.y += (open - mouthG.current.scale.y) * 0.25; mouthG.current.position.y = -mL * 0.006 }
     if (rootG.current) rootG.current.rotation.z = standing && (eL > 0.7 || hL > 0.85) ? Math.sin(T * 1.1) * 0.04 : 0
     if (standing && worst > 0) {
@@ -150,7 +160,27 @@ export function Humanoid({ look, speedRef, actRef, condRef }: { look: Look; spee
       // tangan ke mulut saat menguap / batuk
       if (yawn) { bl(shR.current, -1.75, 0, 0.2, 0.9); bl(elR.current, -2.3, 0, 0, 0.9) }
       if (cough) { bl(shR.current, -1.55, 0, 0.25, 0.9); bl(elR.current, -2.2, 0, 0, 0.9) }
+      if (thirsty) { bl(shR.current, -1.45, 0, 0.3, 0.9); bl(elR.current, -2.0, 0, 0, 0.9) } // tangan ke tenggorokan
+      if (sniff) { bl(shL.current, -1.35, 0, -0.1, 0.9); bl(elL.current, -2.1, 0, 0, 0.9) } // mengendus ketiak
+      if (yL > 0.3 && torso.current) torso.current.rotation.x += 0.04
     }
+
+    flies.current.forEach((g, i) => {
+      if (!g) return
+      g.visible = yL > 0.3 && !sleeping
+      const a = T * (3 + i) + i * 2.1
+      g.position.set(Math.cos(a) * 0.3, 0.86 + Math.sin(a * 1.7) * 0.09 + i * 0.06, Math.sin(a) * 0.3)
+    })
+    sweat.current.forEach((g, i) => {
+      if (!g) return
+      g.visible = tL > 0.35 && !sleeping
+      const u = (T * 0.9 + i * 0.5) % 1
+      g.position.set((i ? 0.115 : -0.115), 1.78 - u * 0.2, 0.09)
+      g.scale.setScalar(1 - u * 0.5)
+    })
+    const holdNow = actRef?.current?.hold ?? 'none'
+    if (gayung.current) gayung.current.visible = holdNow === 'gayung'
+    if (glass.current) glass.current.visible = holdNow === 'glass'
 
     // ---- pose adegan (aktivitas) ----
     const a = actRef?.current
@@ -200,6 +230,20 @@ export function Humanoid({ look, speedRef, actRef, condRef }: { look: Look; spee
         set(shL.current, -0.3, 0, 0.12); set(elL.current, -1.25)
         set(shR.current, -1.35 * r, 0, -0.08 - 0.05 * r); set(elR.current, -0.25 * r - 0.1)
         torsoRot(0.12 * r); headRot(0.05, Math.sin(t * 0.9) * 0.45 * (1 - r))
+        break
+      }
+      case 'bathe': { // mandi: menciduk dengan gayung, mengguyur kepala, menggosok bahu
+        const pour = (Math.sin(t * 1.6) + 1) / 2
+        set(shR.current, -2.0 - 0.7 * pour, 0, -0.35); set(elR.current, -0.7 - 0.5 * pour)
+        set(shL.current, -1.1, 0, 0.5 + 0.2 * Math.sin(t * 5)); set(elL.current, -1.9)
+        torsoRot(-0.05 - 0.08 * pour); headRot(-0.25 * pour, Math.sin(t * 1.2) * 0.2)
+        break
+      }
+      case 'drink': { // minum dari gelas
+        const sip = Math.min(1, (Math.sin(t * 1.4 - 0.5) + 1))
+        set(shR.current, -1.6 - 0.5 * sip, 0, -0.15); set(elR.current, -1.9 - 0.3 * sip)
+        set(shL.current, -0.3, 0, 0.12); set(elL.current, -0.6)
+        torsoRot(-0.03); headRot(-0.18 * sip, 0)
         break
       }
       case 'patrol': { // satpam: senter diarahkan ke depan, menyapu kiri-kanan
@@ -252,9 +296,9 @@ export function Humanoid({ look, speedRef, actRef, condRef }: { look: Look; spee
 
   const leg = (side: 1 | -1, hip: React.RefObject<Group>, knee: React.RefObject<Group>) => (
     <G r={hip} p={[side * 0.095, 0.93, 0]}>
-      <Cap r={0.078} l={0.3} p={[0, -0.2, 0]} c={pants} />
+      <Cap r={0.078} l={0.3} p={[0, -0.2, 0]} c={bare ? skin : pants} rough={bare ? 0.6 : 0.85} />
       <G r={knee} p={[0, -0.43, 0]}>
-        <Cap r={0.06} l={0.3} p={[0, -0.2, 0]} c={pants} />
+        <Cap r={0.06} l={0.3} p={[0, -0.2, 0]} c={bare ? skin : pants} rough={bare ? 0.6 : 0.85} />
         {/* sepatu: grup kaki di pergelangan (0.43 m di bawah lutut) */}
         <group ref={(g) => { shoeRefs.current[side === 1 ? 0 : 1] = g }} position={[0, -0.43, 0]}>
         <RoundedBox args={[0.108, 0.04, 0.28]} radius={0.018} smoothness={3} position={[0, -0.052, 0.04]} castShadow>
@@ -273,10 +317,10 @@ export function Humanoid({ look, speedRef, actRef, condRef }: { look: Look; spee
 
   const arm = (side: 1 | -1, sh: React.RefObject<Group>, el: React.RefObject<Group>) => (
     <G r={sh} p={[side * 0.2, 0.5, 0]}>
-      <Ball r={0.055} c={shirt} s={[1, 1, 1]} />
-      <Cap r={0.047} l={0.2} p={[0, -0.15, 0]} c={shirt} />
+      <Ball r={0.055} c={bare ? skin : shirt} s={[1, 1, 1]} />
+      <Cap r={0.047} l={0.2} p={[0, -0.15, 0]} c={bare ? skin : shirt} rough={bare ? 0.6 : 0.85} />
       <G r={el} p={[0, -0.3, 0]}>
-        <Cap r={0.041} l={0.19} p={[0, -0.12, 0]} c={sleeveSkin ? skin : shirt} rough={sleeveSkin ? 0.6 : 0.85} />
+        <Cap r={0.041} l={0.19} p={[0, -0.12, 0]} c={sleeveSkin || bare ? skin : shirt} rough={sleeveSkin || bare ? 0.6 : 0.85} />
         {sleeveSkin && <Cap r={0.046} l={0.025} p={[0, -0.01, 0]} c={shirtDark} />}
         {/* tangan */}
         <Ball r={0.044} p={[0, -0.275, 0.005]} s={[0.85, 1.25, 0.7]} c={skin} rough={0.6} />
@@ -307,6 +351,14 @@ export function Humanoid({ look, speedRef, actRef, condRef }: { look: Look; spee
               <Blk w={0.24} h={0.32} d={0.02} p={[0, -0.06, 0]} c="#e9e4d6" rough={0.9} />
               <Blk w={0.2} h={0.05} d={0.025} p={[0, 0.05, 0]} c="#2a2a2a" />
               {[-0.01, -0.06, -0.11].map((y) => <Blk key={y} w={0.18} h={0.012} d={0.025} p={[0, y, 0]} c="#9a958a" />)}
+            </group>
+            <group ref={gayung} position={[0, -0.34, 0.02]} visible={false}>
+              <mesh position={[0, -0.04, 0.03]} rotation={[0.5, 0, 0]} castShadow><cylinderGeometry args={[0.075, 0.055, 0.09, 14]} /><meshStandardMaterial color="#e74c3c" roughness={0.4} /></mesh>
+              <Blk w={0.02} h={0.02} d={0.18} p={[0, 0.0, -0.08]} c="#e74c3c" rough={0.4} />
+            </group>
+            <group ref={glass} position={[0, -0.34, 0.02]} visible={false}>
+              <mesh position={[0, 0, 0]}><cylinderGeometry args={[0.04, 0.032, 0.11, 12]} /><meshStandardMaterial color="#cfe9f5" transparent opacity={0.55} roughness={0.1} /></mesh>
+              <mesh position={[0, -0.01, 0]}><cylinderGeometry args={[0.034, 0.028, 0.07, 12]} /><meshStandardMaterial color="#6cc3ee" transparent opacity={0.7} /></mesh>
             </group>
             <group ref={torch} position={[0, -0.3, 0.06]} visible={false}>
               <Blk w={0.05} h={0.2} d={0.05} p={[0, -0.04, 0]} c="#2a2a2a" rough={0.4} />
@@ -340,7 +392,8 @@ export function Humanoid({ look, speedRef, actRef, condRef }: { look: Look; spee
       )}
       {leg(1, hipL, kneeL)}
       {leg(-1, hipR, kneeR)}
-      <Ball r={0.13} p={[0, 0.95, 0]} s={[1.2, 0.75, 0.85]} c={pants} rough={0.9} />
+      <Ball r={0.13} p={[0, 0.95, 0]} s={[1.2, 0.75, 0.85]} c={bare ? '#5ab0d9' : pants} rough={0.9} />
+      {bare && <mesh position={[0, 0.72, 0]} castShadow><cylinderGeometry args={[0.2, 0.235, 0.4, 18]} /><meshStandardMaterial color="#5ab0d9" roughness={1} /></mesh>}
 
       <G r={torso} p={[0, 0.92, 0]}>
         {/* badan */}
@@ -357,7 +410,7 @@ export function Humanoid({ look, speedRef, actRef, condRef }: { look: Look; spee
             <Cap r={0.007} l={0.1} p={[-0.04, 0.42, 0.118]} c="#e8e8e8" />
           </>
         )}
-        {!hoodie && (
+        {!hoodie && !bare && (
           <>
             {/* kerah + kancing */}
             <Blk w={0.1} h={0.03} d={0.03} p={[0, 0.53, 0.085]} c={tint(shirt, 0.25)} />
@@ -368,8 +421,13 @@ export function Humanoid({ look, speedRef, actRef, condRef }: { look: Look; spee
         {/* leher */}
         <Cap r={0.045} l={0.06} p={[0, 0.58, 0]} c={skin} rough={0.6} />
 
+        {/* efek kebersihan & haus */}
+        <group position={[0, 0, 0]}>
+          {[0, 1, 2].map((i) => <group key={'f' + i} ref={(g) => { flies.current[i] = g }} visible={false}><mesh><sphereGeometry args={[0.018, 6, 5]} /><meshBasicMaterial color="#222" /></mesh></group>)}
+        </group>
         {/* kepala */}
         <G r={head} p={[0, 0.72, 0]}>
+          {[0, 1].map((i) => <group key={'s' + i} ref={(g) => { sweat.current[i] = g }} visible={false}><mesh><sphereGeometry args={[0.014, 8, 6]} /><meshStandardMaterial color="#9ad6ff" transparent opacity={0.8} /></mesh></group>)}
           <Ball r={0.105} s={[0.92, 1.15, 1.0]} c={skin} seg={24} cast={false} />
           <Ball r={0.07} p={[0, -0.07, 0.025]} s={[1, 0.8, 0.9]} c={skin} cast={false} />
           <Ball r={0.024} p={[0.096, 0, 0]} s={[0.55, 1, 0.8]} c={skinDark} seg={10} />

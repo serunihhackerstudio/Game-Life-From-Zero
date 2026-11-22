@@ -146,7 +146,7 @@ function Dialog({ npcId, nodeId }: { npcId: keyof typeof NPCS; nodeId: string })
   const pick = useGame((st) => st.pick)
   const npc = NPCS[npcId]
   const ctx: Ctx = {
-    name: s.name, day: dayOf(s.minute), hour: hourOf(s.minute), money: s.money, hunger: s.hunger, energy: s.energy, health: s.health, mood: s.mood,
+    name: s.name, day: dayOf(s.minute), hour: hourOf(s.minute), money: s.money, hunger: s.hunger, energy: s.energy, health: s.health, mood: s.mood, thirst: s.thirst, hygiene: s.hygiene,
     aff: s.affinity[npcId] ?? 0, rentDue: s.rentDueDay, shifts: s.shifts, hired: s.hired.length, talked: s.talkDay[npcId] === dayOf(s.minute),
   }
   const node = npc.nodes[nodeId] ?? npc.nodes.root

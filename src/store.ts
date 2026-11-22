@@ -42,16 +42,16 @@ export function visMinute(): number {
 /** Posisi pemain: dimutasi tiap frame, tidak masuk React state. */
 export const playerPos = { x: START.x, z: START.z, rot: START.rot }
 
-export type SceneKind = 'talk' | 'work' | 'koran' | 'parkir' | 'pelayan' | 'kurir' | 'nasgor' | 'ojek' | 'jaga' | 'eat' | 'shop' | 'cook' | 'sleep' | 'rest'
+export type SceneKind = 'talk' | 'work' | 'koran' | 'parkir' | 'pelayan' | 'kurir' | 'nasgor' | 'ojek' | 'jaga' | 'drink' | 'mandi' | 'eat' | 'shop' | 'cook' | 'sleep' | 'rest'
 export interface SceneInfo { kind: SceneKind; label: string; t0: number; dur: number; fromMin: number; toMin: number; shop?: ShopId; npc?: NpcId; pulseAt: number }
 export type Ui = null | { kind: 'shop'; shop: ShopId } | { kind: 'cook' } | { kind: 'inv' } | { kind: 'jobs' } | { kind: 'talk'; npc: NpcId; node: string }
-interface Goals { day: number; worked: boolean; ate: boolean; slept: boolean }
+interface Goals { day: number; worked: boolean; ate: boolean; slept: boolean; bathed?: boolean }
 interface Toast { id: number; text: string; kind: 'info' | 'good' | 'bad' }
 type Note = { text: string; kind: Toast['kind'] }
 
 interface Data {
   name: string; gender: Gender
-  money: number; health: number; energy: number; hunger: number; mood: number
+  money: number; health: number; energy: number; hunger: number; mood: number; thirst: number; hygiene: number
   minute: number; rentDueDay: number; shifts: number; goals: Goals; inv: Record<string, number>
   hired: string[]; jobShifts: Record<string, number>; jobDay: Record<string, number>
   affinity: Record<string, number>; talkDay: Record<string, number>
@@ -89,7 +89,7 @@ interface GameState extends Data {
 type Mode = 'awake' | 'sleep' | 'work'
 
 function newDay(d: Data, day: number, notes: Note[]) {
-  d.goals = { day, worked: false, ate: false, slept: false }
+  d.goals = { day, worked: false, ate: false, slept: false, bathed: false }
   const due = d.rentDueDay
   if (day > due + 2) d.gameOver = 'Kamu diusir dari kos karena menunggak terlalu lama.'
   else if (day > due) notes.push({ text: 'Tagihan kos menunggak! Denda berlaku, segera temui Pak Budi.', kind: 'bad' })
@@ -107,16 +107,17 @@ function simulate(d0: Data, minutes: number, mode: Mode, notes: Note[], drain = 
     const h = dt / 60
     const prevDay = dayOf(d.minute)
     d.minute += dt
-    if (mode === 'sleep') { d.hunger -= 1.5 * h; d.energy += 9 * h }
-    else { d.hunger -= 3 * h; d.energy -= (mode === 'work' ? drain : 2) * h }
-    d.hunger = clamp(d.hunger); d.energy = clamp(d.energy)
-    if (d.hunger <= 0 || d.energy <= 0) d.health -= 6 * h
-    else if (d.hunger > 40 && d.energy > 40) d.health += (mode === 'sleep' ? 3 : 1) * h
+    if (mode === 'sleep') { d.hunger -= 1.5 * h; d.energy += 9 * h; d.thirst -= 1.8 * h; d.hygiene -= 0.5 * h }
+    else { d.hunger -= 3 * h; d.energy -= (mode === 'work' ? drain : 2) * h; d.thirst -= (mode === 'work' ? 5 : 3.5) * h; d.hygiene -= (mode === 'work' ? 3 : 1.6) * h }
+    d.hunger = clamp(d.hunger); d.energy = clamp(d.energy); d.thirst = clamp(d.thirst); d.hygiene = clamp(d.hygiene)
+    if (d.hunger <= 0 || d.energy <= 0 || d.thirst <= 0) d.health -= 6 * h
+    else if (d.hunger > 40 && d.energy > 40 && d.thirst > 30) d.health += (mode === 'sleep' ? 3 : 1) * h
+    if (d.hygiene < 10) d.health -= 1 * h // tubuh kotor: rentan sakit
     d.health = clamp(d.health)
-    const target = 20 + 0.4 * d.hunger + 0.4 * d.energy
+    const target = 15 + 0.3 * d.hunger + 0.3 * d.energy + 0.1 * d.thirst + 0.15 * d.hygiene
     const diff = target - d.mood
     d.mood = clamp(d.mood + Math.sign(diff) * Math.min(Math.abs(diff), 1.5 * h))
-    if (d.health <= 0) d.gameOver = 'Kamu jatuh sakit karena kelaparan dan kelelahan.'
+    if (d.health <= 0) d.gameOver = 'Kamu jatuh sakit karena kelaparan, kehausan, atau kelelahan.'
     const day = dayOf(d.minute)
     if (day !== prevDay) newDay(d, day, notes)
   }
@@ -125,9 +126,9 @@ function simulate(d0: Data, minutes: number, mode: Mode, notes: Note[], drain = 
 
 const DEFAULT: Data = {
   name: 'Andi', gender: 'male',
-  money: 100000, health: 100, energy: 100, hunger: 100, mood: 75,
+  money: 100000, health: 100, energy: 100, hunger: 100, mood: 75, thirst: 100, hygiene: 100,
   minute: 7 * 60, rentDueDay: 8, shifts: 0,
-  goals: { day: 1, worked: false, ate: false, slept: false },
+  goals: { day: 1, worked: false, ate: false, slept: false, bathed: false },
   inv: {},
   hired: [],
   jobShifts: {},
@@ -149,7 +150,7 @@ export const useGame = create<GameState>((set, get) => {
   }
   const dataOf = (s: GameState): Data => ({
     name: s.name, gender: s.gender, money: s.money, health: s.health, energy: s.energy,
-    hunger: s.hunger, mood: s.mood, minute: s.minute, rentDueDay: s.rentDueDay,
+    hunger: s.hunger, mood: s.mood, thirst: s.thirst, hygiene: s.hygiene, minute: s.minute, rentDueDay: s.rentDueDay,
     shifts: s.shifts, goals: s.goals, inv: s.inv, hired: s.hired, jobShifts: s.jobShifts, jobDay: s.jobDay, affinity: s.affinity, talkDay: s.talkDay, gameOver: s.gameOver,
   })
   const commit = (d: Data, notes: Note[]) => {
@@ -169,7 +170,7 @@ export const useGame = create<GameState>((set, get) => {
 
   const ctxOf = (s: GameState, id: NpcId): Ctx => ({
     name: s.name, day: dayOf(s.minute), hour: hourOf(s.minute), money: s.money,
-    hunger: s.hunger, energy: s.energy, health: s.health, mood: s.mood,
+    hunger: s.hunger, energy: s.energy, health: s.health, mood: s.mood, thirst: s.thirst, hygiene: s.hygiene,
     aff: s.affinity[id] ?? 0, rentDue: s.rentDueDay, shifts: s.shifts, hired: s.hired.length,
     talked: s.talkDay[id] === dayOf(s.minute),
   })
@@ -186,9 +187,9 @@ export const useGame = create<GameState>((set, get) => {
     if (s.money < price) return toast(`Uang tidak cukup (${rupiah(price)}).`, 'bad')
     const notes: Note[] = []
     const d = simulate(dataOf(s), 20, 'awake', notes)
-    d.money -= price; d.hunger = clamp(d.hunger + 40); d.mood = clamp(d.mood + 4)
+    d.money -= price; d.hunger = clamp(d.hunger + 40); d.thirst = clamp(d.thirst + 18); d.mood = clamp(d.mood + 4)
     d.goals = { ...d.goals, ate: true }
-    notes.push({ text: `Makan nasi pecel. -${rupiah(price)}`, kind: 'info' })
+    notes.push({ text: `Makan nasi pecel + es teh. -${rupiah(price)}`, kind: 'info' })
     playScene('eat', 'Makan di warung…', 5500, s.minute, d, notes)
   }
 
@@ -202,7 +203,7 @@ export const useGame = create<GameState>((set, get) => {
     if (s.energy < 25) return toast('Terlalu lelah untuk bekerja. Istirahat dulu.', 'bad')
     const before = s.jobShifts[job.id] ?? 0
     const lvl = jobLevel(before)
-    const prod = (s.hunger < 25 ? 0.7 : 1) * (s.mood < 30 ? 0.9 : 1)
+    const prod = (s.hunger < 25 ? 0.7 : 1) * (s.mood < 30 ? 0.9 : 1) * (s.thirst < 25 ? 0.85 : 1) * (s.hygiene < 25 ? 0.9 : 1)
     const wage = Math.round((job.wage * lvl.mult * prod) / 500) * 500
     const notes: Note[] = []
     const d = simulate(dataOf(s), job.hours * 60, 'work', notes, job.energyPerHour)
@@ -236,7 +237,7 @@ export const useGame = create<GameState>((set, get) => {
       playerPos.x = sv.px; playerPos.z = sv.pz; playerPos.rot = sv.prot
       acc = 0; runAcc = 0
       const { v: _v, px: _px, pz: _pz, prot: _prot, ...data } = sv
-      set({ ...data, inv: data.inv ?? {}, hired: data.hired ?? ['gudang'], jobShifts: data.jobShifts ?? { gudang: data.shifts ?? 0 }, jobDay: data.jobDay ?? {}, affinity: data.affinity ?? {}, talkDay: data.talkDay ?? {}, screen: 'playing', paused: false, ui: null, scene: null, busy: null, nearby: null, toasts: [] })
+      set({ ...data, thirst: data.thirst ?? 100, hygiene: data.hygiene ?? 100, inv: data.inv ?? {}, hired: data.hired ?? ['gudang'], jobShifts: data.jobShifts ?? { gudang: data.shifts ?? 0 }, jobDay: data.jobDay ?? {}, affinity: data.affinity ?? {}, talkDay: data.talkDay ?? {}, screen: 'playing', paused: false, ui: null, scene: null, busy: null, nearby: null, toasts: [] })
       toast('Permainan dilanjutkan.', 'info')
     },
 
@@ -277,7 +278,7 @@ export const useGame = create<GameState>((set, get) => {
       const inv = { ...d.inv }
       for (const [id, n] of Object.entries(r.needs)) { inv[id] = (inv[id] ?? 0) - (n ?? 0); if (inv[id] <= 0) delete inv[id] }
       d.inv = inv
-      d.hunger = clamp(d.hunger + r.hunger); d.mood = clamp(d.mood + r.mood); d.health = clamp(d.health + (r.health ?? 0))
+      d.hunger = clamp(d.hunger + r.hunger); d.mood = clamp(d.mood + r.mood); d.health = clamp(d.health + (r.health ?? 0)); d.thirst = clamp(d.thirst + (r.thirst ?? 0))
       d.goals = { ...d.goals, ate: true }
       notes.push({ text: `Kamu memasak ${r.name}. Lapar +${r.hunger}.`, kind: 'good' })
       set({ ui: null })
@@ -288,14 +289,15 @@ export const useGame = create<GameState>((set, get) => {
       const s = get(), def = ITEMS[itemId]
       if (!def.eat || (s.inv[itemId] ?? 0) < 1 || s.busy || s.gameOver) return
       const e = def.eat, verb = e.verb ?? 'Makan'
-      if (e.hunger > 0 && s.hunger >= 95 && !e.energy) return toast('Kamu masih kenyang.', 'info')
+      if (e.hunger > 0 && s.hunger >= 95 && !e.energy && !e.thirst) return toast('Kamu masih kenyang.', 'info')
+      if (!e.hunger && !e.energy && e.thirst && s.thirst >= 95) return toast('Kamu tidak haus.', 'info')
       const notes: Note[] = []
       const d = simulate(dataOf(s), 5, 'awake', notes)
       const inv = { ...d.inv }; inv[itemId] -= 1; if (inv[itemId] <= 0) delete inv[itemId]
       d.inv = inv
-      d.hunger = clamp(d.hunger + e.hunger); d.energy = clamp(d.energy + (e.energy ?? 0)); d.mood = clamp(d.mood + e.mood)
+      d.hunger = clamp(d.hunger + e.hunger); d.energy = clamp(d.energy + (e.energy ?? 0)); d.thirst = clamp(d.thirst + (e.thirst ?? 0)); d.mood = clamp(d.mood + e.mood)
       if (e.hunger >= 10) d.goals = { ...d.goals, ate: true }
-      const gains = [e.hunger ? `Lapar +${e.hunger}` : '', e.energy ? `Energi +${e.energy}` : '', `Mood +${e.mood}`].filter(Boolean).join(', ')
+      const gains = [e.hunger ? `Lapar +${e.hunger}` : '', e.thirst ? `Haus -${e.thirst}` : '', e.energy ? `Energi +${e.energy}` : '', `Mood +${e.mood}`].filter(Boolean).join(', ')
       notes.push({ text: `${verb} ${def.name}. ${gains}.`, kind: 'info' })
       commit(d, notes)
     },
@@ -316,7 +318,8 @@ export const useGame = create<GameState>((set, get) => {
       const day = dayOf(s.minute), id = ui.npc
       switch (ch.act) {
         case 'chat': {
-          if (s.talkDay[id] !== day) {
+          if (s.hygiene < 25 && s.talkDay[id] !== day) toast('Kamu bau. Orang-orang menjauh, hubungan tidak bertambah. Mandi dulu!', 'bad')
+          else if (s.talkDay[id] !== day) {
             const a = Math.min(AFF_MAX, (s.affinity[id] ?? 0) + 1)
             set({ affinity: { ...s.affinity, [id]: a }, talkDay: { ...s.talkDay, [id]: day }, mood: clamp(s.mood + 3) })
             toast(`Hubungan dengan ${NPCS[id].name} membaik. Mood +3.`, 'good')
@@ -418,6 +421,21 @@ export const useGame = create<GameState>((set, get) => {
           return get().openTalk('sari')
         case 'masak':
           return set({ ui: { kind: 'cook' } })
+        case 'minum': {
+          if (s.thirst >= 95) return toast('Kamu tidak haus.', 'info')
+          const d = simulate(base, 3, 'awake', notes)
+          d.thirst = clamp(d.thirst + 45); d.mood = clamp(d.mood + 1)
+          notes.push({ text: 'Minum air galon. Haus -45.', kind: 'info' })
+          return playScene('drink', 'Minum air…', 3800, s.minute, d, notes)
+        }
+        case 'mandi': {
+          if (s.hygiene >= 90) return toast('Badanmu masih bersih.', 'info')
+          const d = simulate(base, 20, 'awake', notes)
+          d.hygiene = 100; d.mood = clamp(d.mood + 6)
+          d.goals = { ...d.goals, bathed: true }
+          notes.push({ text: 'Segar setelah mandi! Kebersihan penuh, Mood +6.', kind: 'good' })
+          return playScene('mandi', 'Mandi di kamar mandi bersama…', 7000, s.minute, d, notes)
+        }
         case 'pakbudi':
           return get().openTalk('budi')
       }

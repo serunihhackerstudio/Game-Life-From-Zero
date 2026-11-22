@@ -36,6 +36,8 @@ export function HUD() {
     s.hunger < 25 && { k: 'h', t: s.hunger <= 0 ? '🥴 Kelaparan!' : '🍽️ Lapar', tip: 'Gerak melambat, produktivitas kerja turun. Makan segera.' },
     s.energy < 25 && { k: 'e', t: '😴 Mengantuk', tip: 'Gerak melambat, mata sayu. Tidur atau minum kopi.' },
     s.health < 50 && { k: 's', t: '🤒 Kurang sehat', tip: 'Wajah pucat dan batuk. Makan teratur dan istirahat.' },
+    s.thirst < 25 && { k: 't', t: s.thirst <= 0 ? '🥵 Dehidrasi!' : '💧 Haus', tip: 'Kesehatan menurun jika tidak minum. Minum air atau teh.' },
+    s.hygiene < 25 && { k: 'y', t: '🤢 Bau badan', tip: 'Orang menjauh dan upah kerja turun. Mandi di kamar mandi bersama.' },
     s.mood < 30 && { k: 'm', t: '😞 Murung', tip: 'Mood rendah. Istirahat di taman atau makan enak.' },
   ].filter(Boolean) as { k: string; t: string; tip: string }[]
   const lvl2 = (v: number, th: number) => Math.min(1, Math.max(0, (th - v) / th))
@@ -52,6 +54,8 @@ export function HUD() {
         <Bar label="Kesehatan" value={s.health} color="#e74c3c" />
         <Bar label="Energi" value={s.energy} color="#f1c40f" />
         <Bar label="Lapar" value={s.hunger} color="#e67e22" />
+        <Bar label="Haus" value={s.thirst} color="#38bdf8" />
+        <Bar label="Bersih" value={s.hygiene} color="#a3e635" />
         <Bar label="Mood" value={s.mood} color="#3498db" />
         {status.length > 0 && (
           <div className="chips">
@@ -66,6 +70,7 @@ export function HUD() {
           {goal(g.worked, 'Bekerja (satu shift)')}
           {goal(g.ate, 'Makan (' + rupiah(MEAL_PRICE) + ')')}
           {goal(g.slept, 'Tidur')}
+          {goal(!!g.bathed, 'Mandi')}
         </ul>
         <h4>Kos & Listrik</h4>
         <p className={dueIn <= 1 ? 'warn' : ''}>
