@@ -3,8 +3,8 @@ import { useFrame } from '@react-three/fiber'
 import { Html, RoundedBox } from '@react-three/drei'
 import { Color, type Group } from 'three'
 
-export type PoseName = 'stand' | 'sit' | 'carry' | 'eat' | 'cook' | 'browse' | 'sleep' | 'sell' | 'signal' | 'tray' | 'talk'
-export type Hold = 'none' | 'crate' | 'spoon' | 'spatula' | 'basket' | 'paper' | 'tray'
+export type PoseName = 'stand' | 'sit' | 'carry' | 'eat' | 'cook' | 'browse' | 'sleep' | 'sell' | 'signal' | 'tray' | 'talk' | 'patrol'
+export type Hold = 'none' | 'crate' | 'spoon' | 'spatula' | 'basket' | 'paper' | 'tray' | 'torch'
 /** Perintah adegan: pose khusus + benda di tangan. t = detik sejak adegan mulai. */
 export interface Act { pose: PoseName; hold: Hold; t: number; reach: number; fill: number; sitY: number }
 /** Kondisi tubuh (0-100) yang memengaruhi tampilan & gerak karakter. */
@@ -67,7 +67,7 @@ export function Humanoid({ look, speedRef, actRef, condRef }: { look: Look; spee
   const crate = useRef<Group>(null), spoon = useRef<Group>(null), spatula = useRef<Group>(null), basket = useRef<Group>(null)
   const fillRefs = useRef<(Group | null)[]>([])
   const packRef = useRef<Group>(null), lids = useRef<Group>(null)
-  const paper = useRef<Group>(null), tray = useRef<Group>(null)
+  const paper = useRef<Group>(null), tray = useRef<Group>(null), torch = useRef<Group>(null)
   const shoeRefs = useRef<(Group | null)[]>([])
 
   useFrame((_, dt0) => {
@@ -162,6 +162,7 @@ export function Humanoid({ look, speedRef, actRef, condRef }: { look: Look; spee
     if (basket.current) basket.current.visible = hold === 'basket'
     if (paper.current) paper.current.visible = hold === 'paper'
     if (tray.current) tray.current.visible = hold === 'tray'
+    if (torch.current) torch.current.visible = hold === 'torch'
     fillRefs.current.forEach((g, i) => { if (g) g.visible = i < (a?.fill ?? 0) })
     const asleep = pose === 'sleep'
     if (packRef.current) packRef.current.visible = !asleep
@@ -199,6 +200,12 @@ export function Humanoid({ look, speedRef, actRef, condRef }: { look: Look; spee
         set(shL.current, -0.3, 0, 0.12); set(elL.current, -1.25)
         set(shR.current, -1.35 * r, 0, -0.08 - 0.05 * r); set(elR.current, -0.25 * r - 0.1)
         torsoRot(0.12 * r); headRot(0.05, Math.sin(t * 0.9) * 0.45 * (1 - r))
+        break
+      }
+      case 'patrol': { // satpam: senter diarahkan ke depan, menyapu kiri-kanan
+        set(shR.current, -1.25, Math.sin(t * 0.9) * 0.35, -0.15); set(elR.current, -0.35)
+        set(shL.current, -0.2 + Math.sin(t * 2) * 0.1, 0, 0.12); set(elL.current, -0.3)
+        torsoRot(0.03, Math.sin(t * 0.9) * 0.12); headRot(0.02, Math.sin(t * 0.9) * 0.4)
         break
       }
       case 'talk': { // bergesture saat bicara
@@ -300,6 +307,12 @@ export function Humanoid({ look, speedRef, actRef, condRef }: { look: Look; spee
               <Blk w={0.24} h={0.32} d={0.02} p={[0, -0.06, 0]} c="#e9e4d6" rough={0.9} />
               <Blk w={0.2} h={0.05} d={0.025} p={[0, 0.05, 0]} c="#2a2a2a" />
               {[-0.01, -0.06, -0.11].map((y) => <Blk key={y} w={0.18} h={0.012} d={0.025} p={[0, y, 0]} c="#9a958a" />)}
+            </group>
+            <group ref={torch} position={[0, -0.3, 0.06]} visible={false}>
+              <Blk w={0.05} h={0.2} d={0.05} p={[0, -0.04, 0]} c="#2a2a2a" rough={0.4} />
+              <Blk w={0.07} h={0.07} d={0.07} p={[0, -0.16, 0]} c="#555" rough={0.3} />
+              <mesh position={[0, -0.2, 0]}><cylinderGeometry args={[0.04, 0.04, 0.012, 12]} /><meshBasicMaterial color="#fff6c8" /></mesh>
+              <mesh position={[0, -0.8, 0]}><coneGeometry args={[0.45, 1.2, 14, 1, true]} /><meshBasicMaterial color="#fff2b0" transparent opacity={0.14} depthWrite={false} side={2} /></mesh>
             </group>
             <group ref={spatula} position={[0, -0.3, 0.05]} rotation={[-0.6, 0, 0]} visible={false}>
               <Blk w={0.02} h={0.26} d={0.02} p={[0, -0.05, 0]} c="#6b4a2f" />

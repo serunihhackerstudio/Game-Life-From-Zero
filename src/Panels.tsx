@@ -125,7 +125,7 @@ function Jobs() {
           return (
             <li key={id}>
               <span className="ic">{j.icon}</span>
-              <span className="nm">{j.name}
+              <span className="nm">{j.name}{j.night && <span className="nightb">🌙 Malam</span>}
                 <em>{j.desc}</em>
                 <em>{rupiah(j.wage)}/shift · mulai {hh(j.start[0])}–{hh(j.start[1])} · {j.hours} jam · {j.where}</em>
                 {ok && <em>Level: {lv.name} ({js[id] ?? 0} shift)</em>}

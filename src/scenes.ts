@@ -56,12 +56,18 @@ export const routeDuration = (route: Route, speed: number) =>
 export const PARK_PATH: Pt[] = [[-8, -2.7], [1.2, -2.7], [4.4, -3.9], [5.5, -5.9]]
 export const KURIR_PATH: Pt[] = [[-33, -2.1], [-19, -2.1], [-16.5, -3.0], [-15.2, -4.5]]
 export const KURIR_RIDE = 4.8
-export function bikeAt(kind: 'parkir' | 'kurir', t: number) {
-  const path = kind === 'parkir' ? PARK_PATH : KURIR_PATH
-  const dur = kind === 'parkir' ? 4.0 : KURIR_RIDE
+export const OJEK_PATH: Pt[] = [[-13, 2.1], [6, 2.1], [17, 2.1], [21.5, 3.3]]
+export const OJEK_RIDE = 5.2
+export function bikeAt(kind: 'parkir' | 'kurir' | 'ojek', t: number) {
+  const path = kind === 'parkir' ? PARK_PATH : kind === 'ojek' ? OJEK_PATH : KURIR_PATH
+  const dur = kind === 'parkir' ? 4.0 : kind === 'ojek' ? OJEK_RIDE : KURIR_RIDE
   const q = polyAt(path, easeOut(t / dur))
   return { x: q.x, z: q.z, rotY: -Math.atan2(q.dz, q.dx) }
 }
+// Satpam: rute patroli di depan gudang & toko; penumpang ojek; pembeli nasi goreng
+export const JAGA_ROUTE: Route = [[14.5, -7.0, 1.2], [26.5, -7.0, 1.6], [26.5, -5.7, 0.4], [14.5, -5.7, 1.4], [14.5, -7.0, 0]]
+export const PASSENGER_ROUTE: Route = [[22.4, 2.8, 0.5], [23.6, -3.5, 0]]
+export const NASGOR_CUSTOMERS: Route = [[-27.4, -3.6, 0], [-25.6, -4.9, 3.4], [-27.4, -3.6, 0]]
 // Pelayan: rute bolak-balik di depan bangku, berhenti di tiap pelanggan
 export const WAITER_ROUTE: Route = [[3.4, -8.5, 0.3], [1.2, -8.5, 1.0], [-1.2, -8.5, 1.0], [3.4, -8.5, 0.4]]
 // Pelanggan pembeli koran
@@ -97,6 +103,28 @@ export function sceneFrame(sc: SceneInfo, t: number, bagCount: number): Frame {
       const drift = Math.sin(t * 0.4) * 0.15
       f.cam = [mx + sx * (2.7 + drift) - ux * 1.2, 1.55, mz + sz * (2.7 + drift) - uz * 1.2]
       f.look = [mx, 0.95, mz]
+      break
+    }
+    case 'nasgor':
+      f.x = -23.5; f.z = -7.6; f.rotY = 0; f.pose = 'cook'; f.hold = 'spatula'
+      f.cam = [-20.6 - t * 0.02, 1.6, -4.2]; f.look = [-23.4, 1.25, -7.0]
+      break
+    case 'ojek': {
+      if (t < OJEK_RIDE + 0.1) {
+        const b = bikeAt('ojek', t)
+        f.hidden = true; f.x = b.x; f.z = b.z
+        f.cam = [b.x - 2.0, 1.7, b.z + 5.2]; f.look = [b.x + 1.6, 1.0, b.z]
+      } else {
+        f.x = 20.3; f.z = 2.5; f.rotY = -PI / 2 + 0.2; f.pose = 'stand'
+        f.cam = [17.6, 1.7, 5.4]; f.look = [21.2, 1.2, 2.8]
+      }
+      break
+    }
+    case 'jaga': {
+      const dur = routeDuration(JAGA_ROUTE, 1.2)
+      const r = routeAt(JAGA_ROUTE, 1.2, t % dur)
+      f.x = r.x; f.z = r.z; f.rotY = r.end ? PI : r.rot; f.pose = 'patrol'; f.hold = 'torch'; f.speed = r.moving ? 1.8 : 0
+      f.cam = [f.x - 3.6 + Math.sin(t * 0.3) * 0.6, 1.7, f.z + 4.6]; f.look = [f.x + 1.6, 1.1, f.z - 0.2]
       break
     }
     case 'koran':

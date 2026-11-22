@@ -42,7 +42,7 @@ export function visMinute(): number {
 /** Posisi pemain: dimutasi tiap frame, tidak masuk React state. */
 export const playerPos = { x: START.x, z: START.z, rot: START.rot }
 
-export type SceneKind = 'talk' | 'work' | 'koran' | 'parkir' | 'pelayan' | 'kurir' | 'eat' | 'shop' | 'cook' | 'sleep' | 'rest'
+export type SceneKind = 'talk' | 'work' | 'koran' | 'parkir' | 'pelayan' | 'kurir' | 'nasgor' | 'ojek' | 'jaga' | 'eat' | 'shop' | 'cook' | 'sleep' | 'rest'
 export interface SceneInfo { kind: SceneKind; label: string; t0: number; dur: number; fromMin: number; toMin: number; shop?: ShopId; npc?: NpcId; pulseAt: number }
 export type Ui = null | { kind: 'shop'; shop: ShopId } | { kind: 'cook' } | { kind: 'inv' } | { kind: 'jobs' } | { kind: 'talk'; npc: NpcId; node: string }
 interface Goals { day: number; worked: boolean; ate: boolean; slept: boolean }
@@ -398,6 +398,9 @@ export const useGame = create<GameState>((set, get) => {
         case 'parkir':
         case 'pelayan':
         case 'kurir':
+        case 'nasgor':
+        case 'ojek':
+        case 'satpam':
           return workJob(JOBS[s.nearby as JobId])
         case 'jobcenter':
           return get().openTalk('dimas')

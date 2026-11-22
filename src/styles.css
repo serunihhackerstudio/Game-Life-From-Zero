@@ -106,3 +106,4 @@ kbd { background: #ffd23f; color: #222; padding: 2px 8px; border-radius: 6px; fo
 .dlg-c kbd { background: #ffd23f; color: #222; border-radius: 5px; padding: 0 6px; margin-right: 6px; font-size: 12px; }
 .dlg-f { margin-top: 8px; font-size: 11px; opacity: .45; }
 .old { opacity: .5; margin-right: 6px; font-weight: 400; font-size: 12px; }
+.nightb { font-size: 11px; margin-left: 8px; padding: 1px 7px; border-radius: 999px; background: rgba(99,102,241,.3); border: 1px solid rgba(129,140,248,.6); }

@@ -1,5 +1,5 @@
 // Data statis dunia "Kota Harapan": zona interaksi, collider, batas peta.
-export type ZoneId = 'bed' | 'pakbudi' | 'warung' | 'gudang' | 'taman' | 'kelontong' | 'pasar' | 'masak' | 'sari' | 'jobcenter' | 'koran' | 'parkir' | 'pelayan' | 'kurir'
+export type ZoneId = 'bed' | 'pakbudi' | 'warung' | 'gudang' | 'taman' | 'kelontong' | 'pasar' | 'masak' | 'sari' | 'jobcenter' | 'koran' | 'parkir' | 'pelayan' | 'kurir' | 'nasgor' | 'ojek' | 'satpam'
 
 export interface Zone { id: ZoneId; x: number; z: number; r: number; label: string }
 export interface Box { x: number; z: number; w: number; d: number } // pusat + ukuran
@@ -22,6 +22,9 @@ export const ZONES: Zone[] = [
   { id: 'parkir', x: 3.0, z: -5.6, r: 2.0, label: 'Jadi tukang parkir' },
   { id: 'pelayan', x: 3.6, z: -8.7, r: 1.4, label: 'Kerja sebagai pelayan warung' },
   { id: 'kurir', x: -34.5, z: -7.0, r: 2.0, label: 'Antar paket (kurir)' },
+  { id: 'nasgor', x: -23.5, z: -5.2, r: 1.7, label: 'Jualan nasi goreng (malam)' },
+  { id: 'ojek', x: -12, z: 5.0, r: 1.8, label: 'Narik ojek (malam)' },
+  { id: 'satpam', x: 12.0, z: -5.1, r: 1.7, label: 'Jaga malam (satpam)' },
 ]
 
 export const TREES: [number, number][] = [
@@ -78,6 +81,9 @@ export const COLLIDERS: Box[] = [
   { x: -30.2, z: -9.2, w: 2.4, d: 1.2 }, // lapak koran
   { x: -34.5, z: -9.9, w: 4, d: 2.2 }, // kios ekspedisi
   { x: 1.8, z: -5.6, w: 0.3, d: 0.3 }, // tiang rambu parkir
+  { x: -23.5, z: -6.6, w: 1.9, d: 1.1 }, // gerobak nasi goreng
+  { x: -12, z: 6.6, w: 2.4, d: 1.1 }, // pangkalan ojek
+  { x: 12.0, z: -6.5, w: 1.8, d: 1.4 }, // pos satpam
   { x: 18, z: 11.2, w: 3, d: 1.1 }, // lapak pasar
   { x: 22.5, z: 11.2, w: 3, d: 1.1 },
   { x: 27, z: 11.2, w: 3, d: 1.1 },

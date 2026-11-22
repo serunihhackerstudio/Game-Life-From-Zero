@@ -167,7 +167,7 @@ export const NPCS: Record<NpcId, NpcDef> = {
         choices: [{ label: 'Oh begitu.', to: 'root' }],
       },
       tips: {
-        say: '"Jangan kerja saat lapar atau lelah. Produktivitas turun dan upahmu dipotong. Tiap pekerjaan cuma bisa diambil sekali sehari, jadi gabungkan: pagi jual koran, siang jadi pelayan."',
+        say: '"Jangan kerja saat lapar atau lelah. Produktivitas turun dan upahmu dipotong. Tiap pekerjaan cuma bisa diambil sekali sehari, jadi gabungkan: pagi jual koran, siang jadi pelayan. Kalau mau kerja malam, ada nasi goreng, ojek, dan satpam. Upahnya besar, tapi jangan lupa tidur."',
         choices: [{ label: 'Terima kasih, Pak.', to: 'root' }],
       },
       chat: {

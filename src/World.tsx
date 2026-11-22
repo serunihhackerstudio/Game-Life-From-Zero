@@ -10,7 +10,7 @@ import { Ball, Barrel, Bin, Bulb, Bx, Cart, Cyl, Flowers, Motorbike, Pallet, Pla
 import { asphalt, cloudTex, facade, facadeEmissive, grass, hazard, metal, pavement, plaster, roofTile, rollerDoor, stripes, tiled, wood } from './textures'
 import { Traffic } from './Traffic'
 import { PathNpc, SceneBike, SeatedNpc } from './SceneActors'
-import { KORAN_CUSTOMER } from './scenes'
+import { JAGA_ROUTE, KORAN_CUSTOMER, NASGOR_CUSTOMERS, PASSENGER_ROUTE, routeAt, routeDuration } from './scenes'
 import { playerPos, useGame, visMinute } from './store'
 
 const Label = ({ pos, text }: { pos: [number, number, number]; text: string }) => (
@@ -458,12 +458,33 @@ function Backdrop() {
   )
 }
 
+/** Cahaya senter satpam: mengikuti titik patroli. */
+function PatrolLight() {
+  const l = useRef<PointLight>(null)
+  useFrame(() => {
+    const sc = useGame.getState().scene
+    if (!sc || !l.current) return
+    const t = (performance.now() - sc.t0) / 1000
+    const r = routeAt(JAGA_ROUTE, 1.2, t % routeDuration(JAGA_ROUTE, 1.2))
+    l.current.position.set(r.x + Math.sin(r.rot) * 1.6, 1.3, r.z + Math.cos(r.rot) * 1.6)
+  })
+  return <pointLight ref={l} intensity={10} distance={7} decay={2} color="#fff2b8" />
+}
+
 /** Properti yang muncul hanya saat adegan: piring makan, uap masakan, selimut tidur. */
 function SceneProps() {
   const kind = useGame((s) => s.scene?.kind)
   const steam = useRef<(Group | null)[]>([])
+  const steamN = useRef<(Group | null)[]>([])
   useFrame(() => {
     const t = performance.now() / 1000
+    steamN.current.forEach((g, i) => {
+      if (!g) return
+      const u = (t * 0.5 + i * 0.33) % 1
+      g.position.set(-23.85 + Math.sin(t + i) * 0.06, 1.2 + u * 0.8, -6.55)
+      g.scale.setScalar(0.5 + u * 1.3)
+      ;((g.children[0] as Mesh).material as MeshStandardMaterial).opacity = 0.5 * (1 - u)
+    })
     steam.current.forEach((g, i) => {
       if (!g) return
       const u = (t * 0.45 + i * 0.25) % 1
@@ -472,6 +493,28 @@ function SceneProps() {
       ;((g.children[0] as Mesh).material as MeshStandardMaterial).opacity = 0.5 * (1 - u)
     })
   })
+  if (kind === 'nasgor') return (
+    <group>
+      <PathNpc route={NASGOR_CUSTOMERS} speed={1.4} delay={0.8} look={{ shirt: '#e0b84c', pants: '#2c3e50', skin: '#b98660', hair: '#111', backpack: true }} />
+      <PathNpc route={NASGOR_CUSTOMERS} speed={1.4} delay={3.6} look={{ shirt: '#7f5aa2', pants: '#3a3a3a', skin: '#d0a07a', hair: '#1a0f0a', female: true }} />
+      {[0, 1, 2].map((i) => (
+        <group key={i} ref={(g) => { steamN.current[i] = g }}>
+          <mesh><sphereGeometry args={[0.1, 10, 8]} /><meshStandardMaterial color="#ffffff" transparent opacity={0.4} depthWrite={false} /></mesh>
+        </group>
+      ))}
+    </group>
+  )
+  if (kind === 'ojek') return (
+    <group>
+      <SceneBike kind="ojek" />
+      <PathNpc route={PASSENGER_ROUTE} speed={1.5} delay={5.6} look={{ shirt: '#c0392b', pants: '#34495e', skin: '#c68e64', hair: '#222', backpack: true }} />
+    </group>
+  )
+  if (kind === 'jaga') return (
+    <group>
+      <PatrolLight />
+    </group>
+  )
   if (kind === 'koran') return <PathNpc route={KORAN_CUSTOMER} speed={1.5} delay={0.8} look={{ shirt: '#8e44ad', pants: '#34495e', skin: '#c68e64', hair: '#222' }} />
   if (kind === 'parkir') return <SceneBike kind="parkir" />
   if (kind === 'kurir') return <SceneBike kind="kurir" />
@@ -620,6 +663,75 @@ function Npc({ id }: { id: NpcId }) {
   )
 }
 
+/** Pos satpam kecil dengan jendela, lampu, dan papan nama. */
+function PosSatpam() {
+  const wall = useMemo(() => plaster('#d9d2b8'), [])
+  const tin = useMemo(() => metal('#7e8b98'), [])
+  return (
+    <group>
+      <TBox x={12.0} z={-6.5} w={1.8} h={2.3} d={1.4} tex={wall} mpt={1.6} />
+      <TBox x={12.0} y={2.3} z={-6.5} w={2.2} h={0.1} d={1.8} tex={tin} mpt={1.2} metal={0.4} rough={0.6} />
+      <Window p={[12.0, 1.5, -5.78]} w={1.1} h={0.7} frame="#1f3a5f" />
+      <Bx x={12.0} y={0} z={-5.77} w={1.8} h={0.45} d={0.04} c="#1f3a5f" />
+      <Sign text="POS SATPAM" w={1.5} h={0.34} p={[12.0, 2.05, -5.77]} bg="#1f3a5f" fg="#fff" glow={0.7} />
+      <Bulb p={[12.0, 2.15, -5.5]} r={0.08} s={3} />
+      <Bx x={11.1} y={0} z={-5.4} w={0.6} h={0.45} d={0.4} c="#8a5a35" />
+      <pointLight position={[12.0, 2.0, -5.3]} intensity={5} distance={6} color="#ffe2b0" />
+    </group>
+  )
+}
+
+/** Gerobak nasi goreng: wajan, api menyala, lampu bohlam, bangku pembeli. */
+function NasgorCart() {
+  const awn = useMemo(() => stripes('#c0392b', '#f4efe6'), [])
+  const fire = useRef<MeshStandardMaterial>(null)
+  useFrame(() => {
+    const { k } = daylight((visMinute() % 1440) / 60)
+    if (fire.current) fire.current.emissiveIntensity = 1.2 + Math.sin(performance.now() / 90) * 0.4 + (1 - k) * 0.8
+  })
+  return (
+    <group position={[-23.5, 0, -6.6]}>
+      <Bx x={0} y={0.4} z={0} w={1.8} h={0.7} d={0.95} c="#8a8f98" mid metal={0.4} rough={0.5} />
+      <Bx x={0} y={0.78} z={0} w={1.9} h={0.06} d={1.0} c="#cfd3d8" mid metal={0.6} rough={0.3} />
+      <Bx x={0} y={0.5} z={0.49} w={1.5} h={0.4} d={0.02} c="#2a2a2a" mid />
+      <Sign text="NASI GORENG" sub="Spesial · Rp12.000" w={1.5} h={0.42} p={[0, 0.5, 0.515]} bg="#c0392b" fg="#fff" glow={0.8} />
+      {/* wajan + api */}
+      <mesh position={[-0.35, 0.96, 0.05]} rotation={[Math.PI, 0, 0]} castShadow><sphereGeometry args={[0.3, 16, 8, 0, Math.PI * 2, 0, Math.PI / 2]} /><meshStandardMaterial color="#222" metalness={0.6} roughness={0.4} side={2} /></mesh>
+      <mesh position={[-0.35, 0.82, 0.05]}><coneGeometry args={[0.12, 0.2, 10]} /><meshStandardMaterial ref={fire} color="#ff7a18" emissive="#ff6a00" emissiveIntensity={1.4} /></mesh>
+      {[0.2, 0.55].map((x) => <Cyl key={x} p={[x, 0.9, -0.15]} r={0.07} h={0.2} c={['#e74c3c', '#f1c40f'][x > 0.3 ? 1 : 0]} rough={0.4} />)}
+      <Bx x={0.55} y={0.8} z={0.2} w={0.34} h={0.18} d={0.26} c="#cfe9f5" mid rough={0.2} />
+      {/* payung / terpal */}
+      <Cyl p={[0.55, 1.65, -0.35]} r={0.025} h={1.8} c="#444" />
+      <mesh position={[0.35, 2.55, -0.2]} castShadow><coneGeometry args={[1.3, 0.45, 14]} /><meshStandardMaterial map={tiled(awn, 3, 1)} roughness={0.85} side={DoubleSide} /></mesh>
+      <Bulb p={[-0.5, 2.0, 0.3]} r={0.09} s={3} />
+      <pointLight position={[-0.5, 1.9, 0.4]} intensity={7} distance={6} color="#ffd9a0" />
+      {[-0.55, 0.55].map((x) => <mesh key={x} position={[x, 0.3, 0.55]} rotation={[Math.PI / 2, 0, 0]} castShadow><cylinderGeometry args={[0.3, 0.3, 0.07, 18]} /><meshStandardMaterial color="#222" /></mesh>)}
+      <Stool p={[-1.5, 0, 1.2]} h={0.42} c="#2c6fb5" />
+      <Stool p={[1.5, 0, 1.2]} h={0.42} />
+    </group>
+  )
+}
+
+/** Pangkalan ojek: atap, bangku, papan nama, helm cadangan, motor menunggu. */
+function OjekStand() {
+  const tin = useMemo(() => metal('#8a97a3'), [])
+  const woodT = useMemo(() => wood('#8a5a35'), [])
+  return (
+    <group>
+      {[-13.0, -11.0].map((x) => <Bx key={x} x={x} y={0} z={7.0} w={0.1} h={2.3} d={0.1} c="#4a3322" />)}
+      <TBox x={-12} y={2.3} z={6.8} w={2.8} h={0.08} d={1.8} tex={tin} mpt={1.3} metal={0.5} rough={0.5} rx={-0.12} mid />
+      <TBox x={-12} y={0.45} z={7.2} w={2.2} h={0.1} d={0.5} tex={woodT} mpt={1} mid />
+      <Bx x={-12.9} y={0} z={7.2} w={0.1} h={0.4} d={0.4} c="#444" />
+      <Bx x={-11.1} y={0} z={7.2} w={0.1} h={0.4} d={0.4} c="#444" />
+      <Sign text="PANGKALAN OJEK" sub="Antar Cepat · Murah" w={2.4} h={0.55} p={[-12, 2.0, 6.02]} bg="#27ae60" fg="#fff" glow={0.7} />
+      <Bulb p={[-12, 2.1, 6.4]} r={0.08} s={3} />
+      <Ball p={[-11.4, 0.7, 7.2]} r={0.18} c="#27ae60" s={[1, 0.9, 1.05]} />
+      <pointLight position={[-12, 2.0, 6.3]} intensity={5} distance={6} color="#d8ffd8" />
+      <group position={[-14.6, 0, 6.3]} rotation={[0, 0.3, 0]}><Motorbike color="#27ae60" /></group>
+    </group>
+  )
+}
+
 /** Lapak koran & majalah di pojok barat jalan. */
 function KoranStand() {
   const woodT = useMemo(() => wood('#8a5a35'), [])
@@ -690,7 +802,7 @@ export function World() {
         <Lightformer form="rect" intensity={0.8} position={[8, 3, 4]} rotation-y={-Math.PI / 2} scale={[8, 4, 1]} color="#ffe9c7" />
       </Environment>
       <Street />
-      <Kos /><Warung /><JobCenter /><KoranStand /><Ekspedisi /><ParkirProps /><Kelontong /><Pasar /><Gudang /><Taman /><Trees /><Lamps /><LampLights /><Utilities /><Backdrop /><Markers />
+      <Kos /><Warung /><JobCenter /><KoranStand /><Ekspedisi /><PosSatpam /><NasgorCart /><OjekStand /><ParkirProps /><Kelontong /><Pasar /><Gudang /><Taman /><Trees /><Lamps /><LampLights /><Utilities /><Backdrop /><Markers />
       <Cart p={[-7.2, 0, -7.4]} ry={0.1} />
       {(Object.keys(NPCS) as NpcId[]).map((id) => <Npc key={id} id={id} />)}
       <SceneProps />
