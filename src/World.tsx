@@ -4,13 +4,14 @@ import { Environment, Html, Lightformer } from '@react-three/drei'
 import { Color, DirectionalLight, DoubleSide, Fog, Group, HemisphereLight, Mesh, MeshStandardMaterial, PointLight, Sprite } from 'three'
 import { KOS_WALL_H, KOS_WALLS, LAMPS, TREES, ZONES } from './data'
 import { daylight, registerGlow, updateGlow } from './glow'
-import { Humanoid } from './Humanoid'
+import { Humanoid, IDLE_ACT, type Act } from './Humanoid'
+import { NPCS, type NpcId } from './npcs'
 import { Ball, Barrel, Bin, Bulb, Bx, Cart, Cyl, Flowers, Motorbike, Pallet, Plant, Pole, Sign, Stool, TBox, Tree, Truck, Window, Wire } from './props'
 import { asphalt, cloudTex, facade, facadeEmissive, grass, hazard, metal, pavement, plaster, roofTile, rollerDoor, stripes, tiled, wood } from './textures'
 import { Traffic } from './Traffic'
 import { PathNpc, SceneBike, SeatedNpc } from './SceneActors'
 import { KORAN_CUSTOMER } from './scenes'
-import { useGame, visMinute } from './store'
+import { playerPos, useGame, visMinute } from './store'
 
 const Label = ({ pos, text }: { pos: [number, number, number]; text: string }) => (
   <Html position={pos} center distanceFactor={16} style={{ pointerEvents: 'none' }}>
@@ -150,10 +151,6 @@ function Kos() {
       <Cyl p={[-18, 2.55, -14]} r={0.008} h={0.4} c="#222" />
       <pointLight position={[-18, 2.1, -14]} intensity={14} distance={10} color="#ffe2b0" />
 
-      <group position={[-14, 0, -8.5]} rotation={[0, -Math.PI / 2, 0]}>
-        <Humanoid look={{ shirt: '#cdbf9a', pants: '#2d2d2d', skin: '#b98660', hair: '#c9c9c9', elder: true, sandals: true }} />
-      </group>
-      <Label pos={[-14, 2.4, -8.5]} text="Pak Budi" />
     </group>
   )
 }
@@ -225,11 +222,6 @@ function Kelontong() {
       <Bulb p={[8.1, 2.0, -9.4]} r={0.09} />
       <Bulb p={[11.1, 2.0, -9.4]} r={0.09} />
       <pointLight position={[9.6, 1.9, -9.6]} intensity={9} distance={7} color="#ffe2b0" />
-      {/* penjual */}
-      <group position={[9.6, 0, -9.9]}>
-        <Humanoid look={{ shirt: '#e07a9a', pants: '#5b4a8a', skin: '#d4a07a', hair: '#241510', female: true }} />
-      </group>
-      <Label pos={[9.6, 2.15, -9.9]} text="Bu Rina" />
       {/* ATM */}
       <group position={[14.0, 0, -10.2]}>
         <Bx x={0} z={0} w={0.9} h={2.0} d={0.8} c="#2c3e50" metal={0.3} />
@@ -600,6 +592,34 @@ function JobCenter() {
   )
 }
 
+/** NPC yang berdiri di tempatnya; menghadap pemain & bergesture saat diajak bicara. */
+function Npc({ id }: { id: NpcId }) {
+  const def = NPCS[id]
+  const g = useRef<Group>(null)
+  const act = useRef<Act>({ ...IDLE_ACT })
+  const rot = useRef(def.rot)
+  const talking = useGame((s) => s.scene?.kind === 'talk' && s.scene.npc === id)
+  const shift = useRef(0)
+  useFrame((_, dt) => {
+    const to = talking ? Math.atan2(playerPos.x - def.pos[0], playerPos.z - def.pos[1]) : def.rot
+    let d = to - rot.current
+    d = Math.atan2(Math.sin(d), Math.cos(d))
+    rot.current += d * Math.min(1, dt * 5)
+    if (g.current) g.current.rotation.y = rot.current
+    act.current.pose = talking ? 'talk' : 'stand'
+    act.current.t = performance.now() / 1000
+    shift.current = 0
+  })
+  return (
+    <group position={[def.pos[0], 0, def.pos[1]]}>
+      <group ref={g} rotation={[0, def.rot, 0]}>
+        <Humanoid look={def.look} actRef={act} />
+      </group>
+      {!talking && <Label pos={[0, 2.25, 0]} text={def.name} />}
+    </group>
+  )
+}
+
 /** Lapak koran & majalah di pojok barat jalan. */
 function KoranStand() {
   const woodT = useMemo(() => wood('#8a5a35'), [])
@@ -672,6 +692,7 @@ export function World() {
       <Street />
       <Kos /><Warung /><JobCenter /><KoranStand /><Ekspedisi /><ParkirProps /><Kelontong /><Pasar /><Gudang /><Taman /><Trees /><Lamps /><LampLights /><Utilities /><Backdrop /><Markers />
       <Cart p={[-7.2, 0, -7.4]} ry={0.1} />
+      {(Object.keys(NPCS) as NpcId[]).map((id) => <Npc key={id} id={id} />)}
       <SceneProps />
       <group position={[-10.5, 0, -6.2]} rotation={[0, 0.15, 0]}><Motorbike color="#2980b9" /></group>
       <group position={[7.5, 0, -6.3]} rotation={[0, Math.PI - 0.1, 0]}><Motorbike color="#c0392b" /></group>

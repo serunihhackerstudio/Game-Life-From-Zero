@@ -90,3 +90,19 @@ kbd { background: #ffd23f; color: #222; padding: 2px 8px; border-radius: 6px; fo
 .vig.beat { animation: beat 1.2s ease-in-out infinite; }
 @keyframes beat { 0%, 100% { opacity: .75; } 50% { opacity: 1; } }
 .bubble { background: #fff; color: #222; padding: 3px 10px; border-radius: 12px; font-size: 13px; font-weight: 700; white-space: nowrap; transition: opacity .25s; box-shadow: 0 2px 8px rgba(0,0,0,.35); }
+
+/* dialog NPC */
+.dlg { position: absolute; left: 50%; bottom: 11vh; transform: translateX(-50%); width: min(94vw, 720px); background: rgba(12,16,32,.92); border: 1px solid rgba(255,255,255,.14); border-radius: 14px; padding: 14px 18px; pointer-events: auto; z-index: 5; animation: rise .3s ease-out both; }
+@keyframes rise { from { opacity: 0; transform: translate(-50%, 14px); } to { opacity: 1; transform: translate(-50%, 0); } }
+.dlg-h { display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; }
+.dlg-h b { font-size: 18px; color: #ffd23f; } .dlg-h span { opacity: .6; font-size: 13px; }
+.dlg-h .aff { margin-left: auto; opacity: .9; font-size: 12px; } .dlg-h .aff i { font-style: normal; letter-spacing: 1px; color: #ff7b9c; font-size: 9px; margin-left: 4px; }
+.dlg-t { margin: 8px 0 10px; font-size: 16px; line-height: 1.55; min-height: 3.1em; }
+.caret { opacity: .6; animation: blink .7s steps(1) infinite; } @keyframes blink { 50% { opacity: 0; } }
+.dlg-c { display: flex; flex-wrap: wrap; gap: 8px; opacity: .25; pointer-events: none; transition: opacity .2s; }
+.dlg-c.on { opacity: 1; pointer-events: auto; }
+.dlg-c button { padding: 8px 14px; border-radius: 9px; border: 1px solid rgba(255,255,255,.18); background: rgba(255,255,255,.07); color: #fff; font-size: 14px; }
+.dlg-c button:hover { background: #2f80ed; border-color: #2f80ed; }
+.dlg-c kbd { background: #ffd23f; color: #222; border-radius: 5px; padding: 0 6px; margin-right: 6px; font-size: 12px; }
+.dlg-f { margin-top: 8px; font-size: 11px; opacity: .45; }
+.old { opacity: .5; margin-right: 6px; font-weight: 400; font-size: 12px; }

@@ -3,7 +3,7 @@ import { useFrame } from '@react-three/fiber'
 import { Html, RoundedBox } from '@react-three/drei'
 import { Color, type Group } from 'three'
 
-export type PoseName = 'stand' | 'sit' | 'carry' | 'eat' | 'cook' | 'browse' | 'sleep' | 'sell' | 'signal' | 'tray'
+export type PoseName = 'stand' | 'sit' | 'carry' | 'eat' | 'cook' | 'browse' | 'sleep' | 'sell' | 'signal' | 'tray' | 'talk'
 export type Hold = 'none' | 'crate' | 'spoon' | 'spatula' | 'basket' | 'paper' | 'tray'
 /** Perintah adegan: pose khusus + benda di tangan. t = detik sejak adegan mulai. */
 export interface Act { pose: PoseName; hold: Hold; t: number; reach: number; fill: number; sitY: number }
@@ -32,9 +32,9 @@ function Cap({ r, l, p, s, rot, c, rough = 0.85 }: { r: number; l: number; p?: V
     </mesh>
   )
 }
-function Ball({ r, p, s, c, rough = 0.6, seg = 16 }: { r: number; p?: V3; s?: V3; c: string; rough?: number; seg?: number }) {
+function Ball({ r, p, s, c, rough = 0.6, seg = 16, cast = true }: { r: number; p?: V3; s?: V3; c: string; rough?: number; seg?: number; cast?: boolean }) {
   return (
-    <mesh position={p} scale={s} castShadow>
+    <mesh position={p} scale={s} castShadow={cast} receiveShadow={false}>
       <sphereGeometry args={[r, seg, Math.max(8, seg - 4)]} />
       <meshStandardMaterial color={c} roughness={rough} />
     </mesh>
@@ -201,6 +201,13 @@ export function Humanoid({ look, speedRef, actRef, condRef }: { look: Look; spee
         torsoRot(0.12 * r); headRot(0.05, Math.sin(t * 0.9) * 0.45 * (1 - r))
         break
       }
+      case 'talk': { // bergesture saat bicara
+        const k = (Math.sin(t * 1.3) + 1) / 2
+        set(shR.current, -0.8 - 0.5 * Math.sin(t * 2.6) ** 2, 0, -0.25 - 0.15 * k); set(elR.current, -1.0 - 0.5 * Math.sin(t * 2.6))
+        set(shL.current, -0.4 - 0.25 * Math.sin(t * 1.7 + 1) ** 2, 0, 0.2); set(elL.current, -0.8 - 0.3 * Math.sin(t * 1.7 + 1))
+        torsoRot(0.03, Math.sin(t * 0.7) * 0.06); headRot(Math.sin(t * 2.2) * 0.05, Math.sin(t * 0.6) * 0.12)
+        break
+      }
       case 'sell': // menjajakan koran: satu tangan terangkat melambai memegang koran
         set(shR.current, -2.7 + Math.sin(t * 5) * 0.25, 0, -0.1); set(elR.current, -0.25)
         set(shL.current, -0.5, 0, 0.1); set(elL.current, -1.4)
@@ -350,8 +357,8 @@ export function Humanoid({ look, speedRef, actRef, condRef }: { look: Look; spee
 
         {/* kepala */}
         <G r={head} p={[0, 0.72, 0]}>
-          <Ball r={0.105} s={[0.92, 1.15, 1.0]} c={skin} seg={24} />
-          <Ball r={0.07} p={[0, -0.07, 0.025]} s={[1, 0.8, 0.9]} c={skin} />
+          <Ball r={0.105} s={[0.92, 1.15, 1.0]} c={skin} seg={24} cast={false} />
+          <Ball r={0.07} p={[0, -0.07, 0.025]} s={[1, 0.8, 0.9]} c={skin} cast={false} />
           <Ball r={0.024} p={[0.096, 0, 0]} s={[0.55, 1, 0.8]} c={skinDark} seg={10} />
           <Ball r={0.024} p={[-0.096, 0, 0]} s={[0.55, 1, 0.8]} c={skinDark} seg={10} />
           {[1, -1].map((sd) => (

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { clock, dayOf, hourOf, jobLevel, MEAL_PRICE, periodOf, RENT, rupiah, useGame, visMinute } from './store'
 import { ZONES } from './data'
 import { Panels } from './Panels'
+import { affLabel, NPCS } from './npcs'
 import { INV_CAP, invCount } from './items'
 
 function Bar({ label, value, color }: { label: string; value: number; color: string }) {
@@ -72,6 +73,12 @@ export function HUD() {
         </p>
         <h4>Tas</h4>
         <p>🎒 {invCount(s.inv)}/{INV_CAP} barang · tekan <b>I</b></p>
+        {Object.keys(s.affinity).length > 0 && (
+          <>
+            <h4>Hubungan</h4>
+            <p>{Object.entries(s.affinity).map(([id, v]) => `${NPCS[id as keyof typeof NPCS].name.replace(/^(Pak|Bu) /, '')}: ${affLabel(v)}`).join(' · ')}</p>
+          </>
+        )}
         <h4>Karier</h4>
         <p>{s.shifts} shift · {lvl.name} · {s.hired.length} pekerjaan{s.hired.length === 0 ? ' — lamar di Job Center' : ''}</p>
       </div>

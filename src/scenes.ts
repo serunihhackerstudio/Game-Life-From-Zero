@@ -1,5 +1,6 @@
 import type { Hold, PoseName } from './Humanoid'
-import type { SceneInfo } from './store'
+import { NPCS } from './npcs'
+import { playerPos, type SceneInfo } from './store'
 
 export type V3 = [number, number, number]
 export interface Frame {
@@ -81,6 +82,21 @@ export function sceneFrame(sc: SceneInfo, t: number, bagCount: number): Frame {
       const a = -0.55 + t * 0.09
       f.cam = [22.1 + Math.sin(a) * 6.6, 2.1, -8.5 + Math.cos(a) * 6.6]
       f.look = [f.x * 0.5 + 11.0, 1.1, -8.7]
+      break
+    }
+    case 'talk': {
+      const n = NPCS[sc.npc!]
+      const px = playerPos.x, pz = playerPos.z
+      const dx = n.pos[0] - px, dz = n.pos[1] - pz, L = Math.hypot(dx, dz) || 1
+      const ux = dx / L, uz = dz / L
+      f.x = px; f.z = pz; f.rotY = Math.atan2(dx, dz); f.pose = 'stand'
+      // kamera di samping garis pandang, di sisi jalan (z lebih besar), sedikit di belakang pemain
+      let sx = -uz, sz = ux
+      if (sz < -0.001 || (Math.abs(sz) < 0.001 && sx < 0)) { sx = -sx; sz = -sz }
+      const mx = (px + n.pos[0]) / 2, mz = (pz + n.pos[1]) / 2
+      const drift = Math.sin(t * 0.4) * 0.15
+      f.cam = [mx + sx * (2.7 + drift) - ux * 1.2, 1.55, mz + sz * (2.7 + drift) - uz * 1.2]
+      f.look = [mx, 0.95, mz]
       break
     }
     case 'koran':

@@ -1,4 +1,6 @@
-import { hourOf, jobLevel, rupiah, useGame } from './store'
+import { useEffect, useMemo, useState } from 'react'
+import { hourOf, jobLevel, rupiah, shopPrice, useGame, dayOf } from './store'
+import { affLabel, AFF_MAX, NPCS, type Ctx } from './npcs'
 import { JOB_ORDER, JOBS } from './jobs'
 import { INV_CAP, invCount, ITEMS, RECIPES, SHOPS, type ItemId } from './items'
 
@@ -30,6 +32,8 @@ function Shop({ id }: { id: 'kelontong' | 'pasar' }) {
   const inv = useGame((s) => s.inv)
   const minute = useGame((s) => s.minute)
   const buy = useGame((s) => s.buy)
+  const aff = useGame((s) => s.affinity.rina ?? 0)
+  const disc = id === 'kelontong' && aff >= 3
   const h = hourOf(minute)
   const open = h >= shop.open[0] && h < shop.open[1]
   const full = (pack: number) => invCount(inv) + pack > INV_CAP
@@ -39,17 +43,19 @@ function Shop({ id }: { id: 'kelontong' | 'pasar' }) {
       <ul className="list">
         {shop.stock.map((st) => {
           const def = ITEMS[st.id]
-          const cant = !open || money < st.price || full(st.pack)
+          const price = id === 'kelontong' ? shopPrice(aff, st.price) : st.price
+          const cant = !open || money < price || full(st.pack)
           return (
             <li key={st.id}>
               <span className="ic">{def.icon}</span>
               <span className="nm">{def.name}{st.note && <small> · {st.note}</small>}<em>Punya: {inv[st.id] ?? 0}</em></span>
-              <span className="pr">{rupiah(st.price)}</span>
+              <span className="pr">{disc && <s className="old">{rupiah(st.price)}</s>}{rupiah(price)}</span>
               <button disabled={cant} onClick={() => buy(id, st.id)}>Beli</button>
             </li>
           )
         })}
       </ul>
+      {disc && <p className="hint">Harga langganan Bu Rina: diskon 10%.</p>}
       {id === 'pasar' && <p className="hint">Harga pasar lebih murah, tetapi hanya buka pagi sampai siang.</p>}
     </Shell>
   )
@@ -135,11 +141,67 @@ function Jobs() {
   )
 }
 
+function Dialog({ npcId, nodeId }: { npcId: keyof typeof NPCS; nodeId: string }) {
+  const s = useGame()
+  const pick = useGame((st) => st.pick)
+  const npc = NPCS[npcId]
+  const ctx: Ctx = {
+    name: s.name, day: dayOf(s.minute), hour: hourOf(s.minute), money: s.money, hunger: s.hunger, energy: s.energy, health: s.health, mood: s.mood,
+    aff: s.affinity[npcId] ?? 0, rentDue: s.rentDueDay, shifts: s.shifts, hired: s.hired.length, talked: s.talkDay[npcId] === dayOf(s.minute),
+  }
+  const node = npc.nodes[nodeId] ?? npc.nodes.root
+  const text = typeof node.say === 'function' ? node.say(ctx) : node.say
+  const choices = node.choices.filter((c) => !c.show || c.show(ctx))
+  const [n, setN] = useState(0)
+  useEffect(() => { // mengetik berbasis waktu (tahan terhadap frame rate rendah)
+    setN(0)
+    const t0 = performance.now()
+    let raf = 0
+    const tick = () => {
+      const k = Math.min(text.length, Math.floor((performance.now() - t0) / 16))
+      setN(k)
+      if (k < text.length) raf = requestAnimationFrame(tick)
+    }
+    raf = requestAnimationFrame(tick)
+    return () => cancelAnimationFrame(raf)
+  }, [text, nodeId, npcId])
+  const done = n >= text.length
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.repeat) return
+      if (e.code === 'Space' || e.code === 'Enter') { e.preventDefault(); if (!done) setN(text.length); else if (choices.length === 1) pick(0) }
+      const m = /^(?:Digit|Numpad)([1-9])$/.exec(e.code)
+      if (m) { if (!done) setN(text.length); else pick(Number(m[1]) - 1) }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [done, text, choices.length, pick])
+  const a = ctx.aff
+  return (
+    <div className="dlg" onClick={() => { if (!done) setN(text.length) }}>
+      <div className="dlg-h">
+        <b>{npc.name}</b><span>{npc.role}</span>
+        <span className="aff" title="Hubungan">♥ {affLabel(a)} <i>{'●'.repeat(a)}{'○'.repeat(AFF_MAX - a)}</i></span>
+      </div>
+      <p className="dlg-t">{text.slice(0, n)}{!done && <span className="caret">▌</span>}</p>
+      <div className={'dlg-c' + (done ? ' on' : '')}>
+        {choices.map((c, i) => (
+          <button key={i} onClick={(e) => { e.stopPropagation(); if (done) pick(i) }}>
+            <kbd>{i + 1}</kbd> {typeof c.label === 'function' ? c.label(ctx) : c.label}
+          </button>
+        ))}
+      </div>
+      <div className="dlg-f">Spasi: lewati teks · 1–{Math.max(1, choices.length)}: pilih · Esc: tutup</div>
+    </div>
+  )
+}
+
 export function Panels() {
   const ui = useGame((s) => s.ui)
   if (!ui) return null
   if (ui.kind === 'shop') return <Shop id={ui.shop} />
   if (ui.kind === 'cook') return <Cook />
   if (ui.kind === 'jobs') return <Jobs />
+  if (ui.kind === 'talk') return <Dialog npcId={ui.npc} nodeId={ui.node} />
   return <Inventory />
 }

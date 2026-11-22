@@ -1,5 +1,5 @@
 // Data statis dunia "Kota Harapan": zona interaksi, collider, batas peta.
-export type ZoneId = 'bed' | 'pakbudi' | 'warung' | 'gudang' | 'taman' | 'kelontong' | 'pasar' | 'masak' | 'jobcenter' | 'koran' | 'parkir' | 'pelayan' | 'kurir'
+export type ZoneId = 'bed' | 'pakbudi' | 'warung' | 'gudang' | 'taman' | 'kelontong' | 'pasar' | 'masak' | 'sari' | 'jobcenter' | 'koran' | 'parkir' | 'pelayan' | 'kurir'
 
 export interface Zone { id: ZoneId; x: number; z: number; r: number; label: string }
 export interface Box { x: number; z: number; w: number; d: number } // pusat + ukuran
@@ -9,14 +9,15 @@ export const BOUNDS = { minX: -38, maxX: 38, minZ: -20, maxZ: 24 }
 
 export const ZONES: Zone[] = [
   { id: 'bed', x: -20.4, z: -14.6, r: 2.0, label: 'Tidur' },
-  { id: 'pakbudi', x: -14, z: -8.5, r: 2.2, label: 'Bayar kos (Pak Budi)' },
+  { id: 'pakbudi', x: -14, z: -8.5, r: 2.2, label: 'Bicara dengan Pak Budi' },
   { id: 'warung', x: 0, z: -9, r: 2.2, label: 'Makan di Warung' },
   { id: 'gudang', x: 22, z: -8, r: 2.6, label: 'Kerja shift di Gudang Logistik' },
   { id: 'taman', x: 4, z: 12, r: 2.3, label: 'Istirahat di bangku taman' },
-  { id: 'kelontong', x: 9.6, z: -8.9, r: 2.2, label: 'Belanja di Warung Kelontong' },
+  { id: 'kelontong', x: 9.6, z: -8.9, r: 2.2, label: 'Bicara dengan Bu Rina (kelontong)' },
   { id: 'pasar', x: 22.5, z: 8.4, r: 2.4, label: 'Belanja di Pasar' },
   { id: 'masak', x: -16.25, z: -16.3, r: 1.6, label: 'Memasak (kompor)' },
-  { id: 'jobcenter', x: -8.3, z: -9.0, r: 2.2, label: 'Job Center (lamar pekerjaan)' },
+  { id: 'sari', x: -4.5, z: -8.6, r: 1.7, label: 'Ngobrol dengan Bu Sari' },
+  { id: 'jobcenter', x: -8.6, z: -8.8, r: 2.2, label: 'Bicara dengan Pak Dimas (Job Center)' },
   { id: 'koran', x: -30.2, z: -6.9, r: 2.0, label: 'Jual koran' },
   { id: 'parkir', x: 3.0, z: -5.6, r: 2.0, label: 'Jadi tukang parkir' },
   { id: 'pelayan', x: 3.6, z: -8.7, r: 1.4, label: 'Kerja sebagai pelayan warung' },
@@ -45,6 +46,8 @@ export const COLLIDERS: Box[] = [
   { x: -14.5, z: -16.8, w: 1.6, d: 0.8 }, // meja
   { x: -18, z: -17.6, w: 1.6, d: 0.6 }, // lemari
   { x: -14, z: -8.5, w: 0.6, d: 0.6 }, // Pak Budi
+  { x: -4.5, z: -9.5, w: 0.6, d: 0.6 }, // Bu Sari
+  { x: -9.7, z: -9.4, w: 0.6, d: 0.6 }, // Pak Dimas
   { x: 0, z: -13, w: 7, d: 5 }, // warung
   { x: 0, z: -10.2, w: 5, d: 0.8 }, // meja warung
   { x: 22, z: -14, w: 14, d: 9 }, // gudang
