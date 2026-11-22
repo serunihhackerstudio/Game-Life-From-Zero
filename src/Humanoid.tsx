@@ -96,7 +96,8 @@ export function Humanoid({ look, speedRef }: { look: Look; speedRef?: MutableRef
       <Cap r={0.078} l={0.3} p={[0, -0.2, 0]} c={pants} />
       <G r={knee} p={[0, -0.43, 0]}>
         <Cap r={0.06} l={0.3} p={[0, -0.2, 0]} c={pants} />
-        {/* sepatu */}
+        {/* sepatu: grup kaki di pergelangan (0.43 m di bawah lutut) */}
+        <group position={[0, -0.43, 0]}>
         <RoundedBox args={[0.108, 0.04, 0.28]} radius={0.018} smoothness={3} position={[0, -0.052, 0.04]} castShadow>
           <meshStandardMaterial color={sole} roughness={0.7} />
         </RoundedBox>
@@ -106,6 +107,7 @@ export function Humanoid({ look, speedRef }: { look: Look; speedRef?: MutableRef
         <Ball r={0.052} p={[0, -0.025, 0.125]} s={[0.95, 0.6, 1.2]} c={shoe} rough={0.55} />
         {!sandals && <Blk w={0.05} h={0.012} d={0.07} p={[0, 0.02, 0.09]} c="#cfcfcf" rough={0.9} />}
         {sandals && <Blk w={0.09} h={0.014} d={0.05} p={[0, 0.012, 0.06]} c="#4a3322" />}
+        </group>
       </G>
     </G>
   )
