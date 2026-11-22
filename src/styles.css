@@ -1,0 +1,47 @@
+* { box-sizing: border-box; }
+html, body, #root { margin: 0; height: 100%; background: #0b1020; color: #fff; font-family: system-ui, 'Segoe UI', Roboto, sans-serif; overflow: hidden; }
+canvas { display: block; touch-action: none; }
+button { font: inherit; cursor: pointer; }
+
+.menu { height: 100%; display: grid; place-items: center; background: radial-gradient(circle at 30% 20%, #27406b, #0b1020 70%); }
+.card { width: min(92vw, 400px); padding: 28px; border-radius: 18px; background: rgba(255,255,255,.07); backdrop-filter: blur(10px); display: flex; flex-direction: column; gap: 12px; }
+.card h1 { margin: 0; letter-spacing: .08em; font-size: 28px; }
+.tag { margin: 0 0 8px; opacity: .7; font-style: italic; }
+.card label { display: flex; flex-direction: column; gap: 6px; font-size: 14px; opacity: .9; }
+.card input { padding: 10px 12px; border-radius: 10px; border: 1px solid rgba(255,255,255,.2); background: rgba(0,0,0,.3); color: #fff; font: inherit; }
+.card button { padding: 12px; border-radius: 10px; border: 1px solid rgba(255,255,255,.2); background: rgba(255,255,255,.08); color: #fff; }
+.card button:hover:not(:disabled) { background: rgba(255,255,255,.18); }
+.card button:disabled { opacity: .4; cursor: not-allowed; }
+.card .primary { background: #2f80ed; border-color: #2f80ed; font-weight: 600; }
+.card .primary:hover { background: #4b93f5 !important; }
+.genders { display: flex; gap: 10px; }
+.genders button { flex: 1; display: flex; align-items: center; gap: 8px; justify-content: center; }
+.genders .sel { border-color: #ffd23f; background: rgba(255,210,63,.15); }
+.genders i { width: 14px; height: 14px; border-radius: 50%; display: inline-block; }
+.small { font-size: 12px; opacity: .6; margin: 4px 0 0; line-height: 1.5; }
+
+.hud { position: fixed; inset: 0; pointer-events: none; }
+.panel { position: absolute; padding: 12px 14px; border-radius: 12px; background: rgba(10,14,28,.62); backdrop-filter: blur(6px); font-size: 13px; }
+.tl { top: 12px; left: 12px; width: 230px; }
+.tr { top: 12px; right: 12px; width: 250px; }
+.who { font-weight: 600; } .who small { font-weight: 400; opacity: .75; }
+.money { font-size: 22px; font-weight: 700; color: #7be07b; margin: 4px 0 8px; }
+.bar { display: grid; grid-template-columns: 68px 1fr 26px; gap: 6px; align-items: center; margin: 4px 0; font-size: 12px; }
+.bar b { text-align: right; font-weight: 500; }
+.track { height: 8px; border-radius: 4px; background: rgba(255,255,255,.15); overflow: hidden; }
+.track div { height: 100%; transition: width .25s; }
+.tr h4 { margin: 8px 0 4px; font-size: 12px; text-transform: uppercase; letter-spacing: .08em; opacity: .65; }
+.tr h4:first-child { margin-top: 0; }
+.tr ul { margin: 0; padding: 0; list-style: none; } .tr li { opacity: .75; margin: 2px 0; } .tr li.ok { color: #7be07b; opacity: 1; }
+.tr p { margin: 0; } .warn { color: #ff7b6b; font-weight: 600; }
+.prompt { position: absolute; bottom: 90px; left: 50%; transform: translateX(-50%); padding: 10px 18px; border-radius: 999px; background: rgba(10,14,28,.8); font-size: 15px; }
+kbd { background: #ffd23f; color: #222; padding: 2px 8px; border-radius: 6px; font-weight: 700; margin-right: 6px; }
+.toasts { position: absolute; bottom: 140px; left: 50%; transform: translateX(-50%); display: flex; flex-direction: column; gap: 6px; align-items: center; width: min(90vw, 520px); }
+.toast { padding: 8px 14px; border-radius: 10px; background: rgba(10,14,28,.85); font-size: 14px; text-align: center; border-left: 4px solid #8aa; }
+.toast.good { border-color: #7be07b; } .toast.bad { border-color: #ff7b6b; }
+.help { position: absolute; bottom: 10px; left: 50%; transform: translateX(-50%); font-size: 12px; opacity: .6; text-align: center; width: 92vw; }
+.overlay { position: absolute; inset: 0; background: rgba(0,0,0,.7); display: grid; place-items: center; font-size: 26px; pointer-events: auto; }
+.modal { background: #151b33; padding: 26px; border-radius: 16px; display: flex; flex-direction: column; gap: 10px; min-width: 280px; font-size: 15px; text-align: center; }
+.modal h2 { margin: 0 0 6px; } .modal p { margin: 0; opacity: .8; }
+.modal button { padding: 11px; border-radius: 10px; border: 0; background: #2f80ed; color: #fff; }
+.label { background: rgba(10,14,28,.75); padding: 3px 10px; border-radius: 6px; font-size: 13px; white-space: nowrap; color: #fff; }

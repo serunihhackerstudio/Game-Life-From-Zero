@@ -1,0 +1,75 @@
+// Data statis dunia "Kota Harapan": zona interaksi, collider, batas peta.
+export type ZoneId = 'bed' | 'pakbudi' | 'warung' | 'gudang' | 'taman'
+
+export interface Zone { id: ZoneId; x: number; z: number; r: number; label: string }
+export interface Box { x: number; z: number; w: number; d: number } // pusat + ukuran
+
+export const START = { x: -18, z: -13.5, rot: 0 }
+export const BOUNDS = { minX: -38, maxX: 38, minZ: -20, maxZ: 24 }
+
+export const ZONES: Zone[] = [
+  { id: 'bed', x: -20.4, z: -14.6, r: 2.0, label: 'Tidur' },
+  { id: 'pakbudi', x: -14, z: -8.5, r: 2.2, label: 'Bayar kos (Pak Budi)' },
+  { id: 'warung', x: 0, z: -9, r: 2.2, label: 'Makan di Warung' },
+  { id: 'gudang', x: 22, z: -8, r: 2.6, label: 'Kerja shift di Gudang Logistik' },
+  { id: 'taman', x: 4, z: 12, r: 2.3, label: 'Istirahat di bangku taman' },
+]
+
+export const TREES: [number, number][] = [
+  [-10, 12.5], [-6, 16.5], [8, 16], [11, 12.5], [0, 18], [-13, 18],
+  [-30, -12], [-30, 9], [33, 9], [-34, -4], [35, -6], [-26, 16], [28, 16],
+]
+export const LAMPS: [number, number][] = [-30, -15, 0, 15, 30].map((x) => [x, -4.6])
+
+// Kos: pusat (-18,-14), 10 x 8, dinding tebal 0.4, pintu 2.4 di tengah sisi depan (z=-10)
+export const KOS_WALL_H = 2.6
+export const KOS_WALLS: Box[] = [
+  { x: -18, z: -18, w: 10, d: 0.4 }, // belakang
+  { x: -23, z: -14, w: 0.4, d: 8 }, // kiri
+  { x: -13, z: -14, w: 0.4, d: 8 }, // kanan
+  { x: -21.1, z: -10, w: 3.8, d: 0.4 }, // depan kiri
+  { x: -14.9, z: -10, w: 3.8, d: 0.4 }, // depan kanan
+]
+
+export const COLLIDERS: Box[] = [
+  ...KOS_WALLS,
+  { x: -21.2, z: -16.6, w: 1.8, d: 2.2 }, // kasur
+  { x: -14.5, z: -16.8, w: 1.6, d: 0.8 }, // meja
+  { x: -18, z: -17.6, w: 1.6, d: 0.6 }, // lemari
+  { x: -14, z: -8.5, w: 0.6, d: 0.6 }, // Pak Budi
+  { x: 0, z: -13, w: 7, d: 5 }, // warung
+  { x: 0, z: -10.2, w: 5, d: 0.8 }, // meja warung
+  { x: 22, z: -14, w: 14, d: 9 }, // gudang
+  { x: 28, z: -8.2, w: 1.2, d: 1.2 }, // peti
+  { x: 29.3, z: -8.2, w: 1.2, d: 1.2 },
+  { x: 4, z: 13.2, w: 2, d: 0.6 }, // bangku
+  ...TREES.map(([x, z]) => ({ x, z, w: 0.8, d: 0.8 })),
+  ...LAMPS.map(([x, z]) => ({ x, z, w: 0.4, d: 0.4 })),
+]
+
+const clampN = (v: number, a: number, b: number) => Math.min(b, Math.max(a, v))
+
+/** Dorong lingkaran (x,z,r) keluar dari semua collider kotak + batas peta. */
+export function resolve(x: number, z: number, r: number): [number, number] {
+  for (let it = 0; it < 3; it++) {
+    for (const b of COLLIDERS) {
+      const hx = b.w / 2, hz = b.d / 2
+      const cx = clampN(x, b.x - hx, b.x + hx)
+      const cz = clampN(z, b.z - hz, b.z + hz)
+      const dx = x - cx, dz = z - cz
+      const d2 = dx * dx + dz * dz
+      if (d2 >= r * r) continue
+      if (d2 > 1e-8) {
+        const d = Math.sqrt(d2)
+        x = cx + (dx / d) * r
+        z = cz + (dz / d) * r
+      } else {
+        // pusat berada di dalam kotak: keluar lewat sumbu penetrasi terkecil
+        const px = hx - Math.abs(x - b.x), pz = hz - Math.abs(z - b.z)
+        if (px < pz) x = b.x + Math.sign(x - b.x || 1) * (hx + r)
+        else z = b.z + Math.sign(z - b.z || 1) * (hz + r)
+      }
+    }
+  }
+  return [clampN(x, BOUNDS.minX, BOUNDS.maxX), clampN(z, BOUNDS.minZ, BOUNDS.maxZ)]
+}
