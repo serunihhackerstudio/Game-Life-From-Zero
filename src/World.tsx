@@ -84,7 +84,7 @@ function Kos() {
       <pointLight position={[-18, 2.3, -14]} intensity={14} distance={10} color="#ffe2b0" />
       <Label pos={[-18, 4, -10]} text="Kos Pak Budi" />
       <group position={[-14, 0, -8.5]} rotation={[0, -Math.PI / 2, 0]}>
-        <Humanoid look={{ shirt: '#8b5a2b', pants: '#3b3b3b', skin: '#b98660', hair: '#cfcfcf' }} />
+        <Humanoid look={{ shirt: '#cdbf9a', pants: '#2d2d2d', skin: '#b98660', hair: '#c9c9c9', elder: true, sandals: true }} />
       </group>
       <Label pos={[-14, 2.4, -8.5]} text="Pak Budi" />
     </group>
