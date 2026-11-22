@@ -25,9 +25,19 @@ export const jobLevel = (shifts: number) =>
   : shifts < 30 ? { name: 'Advanced', mult: 1.3, next: 30 }
   : { name: 'Expert', mult: 1.5, next: null as number | null }
 
+/** Menit game yang ditampilkan: selama adegan, jam berjalan cepat dari awal ke akhir. */
+export function visMinute(): number {
+  const { scene: sc, minute } = useGame.getState()
+  if (!sc || !isFinite(sc.dur)) return minute
+  const f = Math.min(1, (performance.now() - sc.t0) / sc.dur)
+  return sc.fromMin + (sc.toMin - sc.fromMin) * f
+}
+
 /** Posisi pemain: dimutasi tiap frame, tidak masuk React state. */
 export const playerPos = { x: START.x, z: START.z, rot: START.rot }
 
+export type SceneKind = 'work' | 'eat' | 'shop' | 'cook' | 'sleep' | 'rest'
+export interface SceneInfo { kind: SceneKind; label: string; t0: number; dur: number; fromMin: number; toMin: number; shop?: ShopId; pulseAt: number }
 export type Ui = null | { kind: 'shop'; shop: ShopId } | { kind: 'cook' } | { kind: 'inv' }
 interface Goals { day: number; worked: boolean; ate: boolean; slept: boolean }
 interface Toast { id: number; text: string; kind: 'info' | 'good' | 'bad' }
@@ -44,6 +54,8 @@ interface GameState extends Data {
   screen: 'menu' | 'playing'
   paused: boolean
   ui: Ui
+  scene: SceneInfo | null
+  cutKey: number
   busy: string | null
   nearby: ZoneId | null
   toasts: Toast[]
@@ -124,24 +136,31 @@ export const useGame = create<GameState>((set, get) => {
     hunger: s.hunger, mood: s.mood, minute: s.minute, rentDueDay: s.rentDueDay,
     shifts: s.shifts, goals: s.goals, inv: s.inv, gameOver: s.gameOver,
   })
-  const commit = (d: Data, notes: Note[], busy?: string) => {
-    set({ ...d, ...(busy ? { busy } : {}) })
+  const commit = (d: Data, notes: Note[]) => {
+    set({ ...d })
     notes.forEach((n) => toast(n.text, n.kind))
-    if (busy) setTimeout(() => set({ busy: null }), 1400)
     if (d.gameOver) void clearSave()
     else get().saveNow()
+  }
+  /** Putar adegan sinematik sepanjang dur ms; hasil aksi (d) baru diterapkan di akhir adegan. */
+  const playScene = (kind: SceneKind, label: string, dur: number, from: number, d: Data, notes: Note[]) => {
+    set((s) => ({ scene: { kind, label, t0: performance.now(), dur, fromMin: from, toMin: d.minute, pulseAt: 0 }, busy: label, cutKey: s.cutKey + 1 }))
+    setTimeout(() => {
+      commit(d, notes)
+      set((s) => ({ scene: null, busy: null, cutKey: s.cutKey + 1 }))
+    }, dur)
   }
 
   return {
     ...DEFAULT,
-    screen: 'menu', paused: false, ui: null, busy: null, nearby: null, toasts: [], hasSave: false,
+    screen: 'menu', paused: false, ui: null, scene: null, cutKey: 0, busy: null, nearby: null, toasts: [], hasSave: false,
 
     refreshSave: async () => set({ hasSave: !!(await loadSave()) }),
 
     newGame: (name, gender) => {
       Object.assign(playerPos, START)
       acc = 0; runAcc = 0
-      set({ ...DEFAULT, name: name.trim().slice(0, 16) || 'Andi', gender, screen: 'playing', paused: false, ui: null, busy: null, nearby: null, toasts: [] })
+      set({ ...DEFAULT, name: name.trim().slice(0, 16) || 'Andi', gender, screen: 'playing', paused: false, ui: null, scene: null, busy: null, nearby: null, toasts: [] })
       toast('Selamat datang di Kota Harapan! Kamu punya Rp100.000. Cari kerja dan bayar kos tiap 7 hari.', 'info')
       get().saveNow()
     },
@@ -152,20 +171,23 @@ export const useGame = create<GameState>((set, get) => {
       playerPos.x = sv.px; playerPos.z = sv.pz; playerPos.rot = sv.prot
       acc = 0; runAcc = 0
       const { v: _v, px: _px, pz: _pz, prot: _prot, ...data } = sv
-      set({ ...data, inv: data.inv ?? {}, screen: 'playing', paused: false, ui: null, busy: null, nearby: null, toasts: [] })
+      set({ ...data, inv: data.inv ?? {}, screen: 'playing', paused: false, ui: null, scene: null, busy: null, nearby: null, toasts: [] })
       toast('Permainan dilanjutkan.', 'info')
     },
 
     toMenu: () => {
       get().saveNow()
-      set({ screen: 'menu', paused: false, ui: null })
+      set({ screen: 'menu', paused: false, ui: null, scene: null, busy: null })
       void get().refreshSave()
     },
 
-    togglePause: () => { if (get().screen === 'playing' && !get().gameOver && !get().ui) set((s) => ({ paused: !s.paused })) },
+    togglePause: () => { if (get().screen === 'playing' && !get().gameOver && !get().ui && !get().busy) set((s) => ({ paused: !s.paused })) },
 
     openUi: (u) => { const s = get(); if (s.screen === 'playing' && !s.paused && !s.busy && !s.gameOver) set({ ui: u }) },
-    closeUi: () => set({ ui: null }),
+    closeUi: () => {
+      const sc = get().scene
+      set((s) => ({ ui: null, ...(sc && !isFinite(sc.dur) ? { scene: null, cutKey: s.cutKey + 1 } : {}) }))
+    },
 
     buy: (shopId, itemId) => {
       const s = get(), shop = SHOPS[shopId], stock = shop.stock.find((x) => x.id === itemId)
@@ -174,7 +196,7 @@ export const useGame = create<GameState>((set, get) => {
       if (h < shop.open[0] || h >= shop.open[1]) return toast(`${shop.name} sudah tutup (buka ${shop.hours}).`, 'bad')
       if (s.money < stock.price) return toast(`Uang tidak cukup (${rupiah(stock.price)}).`, 'bad')
       if (invCount(s.inv) + stock.pack > INV_CAP) return toast(`Tas penuh (maks ${INV_CAP} barang).`, 'bad')
-      set({ money: s.money - stock.price, inv: { ...s.inv, [itemId]: (s.inv[itemId] ?? 0) + stock.pack } })
+      set({ money: s.money - stock.price, inv: { ...s.inv, [itemId]: (s.inv[itemId] ?? 0) + stock.pack }, scene: s.scene ? { ...s.scene, pulseAt: performance.now() } : s.scene })
       toast(`Beli ${ITEMS[itemId].name}${stock.pack > 1 ? ' ×' + stock.pack : ''} · -${rupiah(stock.price)}`, 'info')
       get().saveNow()
     },
@@ -193,7 +215,7 @@ export const useGame = create<GameState>((set, get) => {
       d.goals = { ...d.goals, ate: true }
       notes.push({ text: `Kamu memasak ${r.name}. Lapar +${r.hunger}.`, kind: 'good' })
       set({ ui: null })
-      commit(d, notes, 'Memasak…')
+      playScene('cook', 'Memasak ' + r.name + '…', 5500, s.minute, d, notes)
     },
 
     eat: (itemId) => {
@@ -218,7 +240,7 @@ export const useGame = create<GameState>((set, get) => {
 
     tick: (dt, running) => {
       const s = get()
-      if (s.screen !== 'playing' || s.paused || s.ui || s.busy || s.gameOver) return
+      if (s.screen !== 'playing' || s.paused || s.ui || s.busy || s.scene || s.gameOver) return
       acc += dt
       if (running) runAcc += dt
       if (acc < 0.25) return
@@ -231,7 +253,7 @@ export const useGame = create<GameState>((set, get) => {
 
     interact: () => {
       const s = get()
-      if (s.screen !== 'playing' || s.paused || s.ui || s.busy || s.gameOver || !s.nearby) return
+      if (s.screen !== 'playing' || s.paused || s.ui || s.busy || s.scene || s.gameOver || !s.nearby) return
       const base = dataOf(s)
       const hour = hourOf(s.minute)
       const day = dayOf(s.minute)
@@ -243,7 +265,7 @@ export const useGame = create<GameState>((set, get) => {
           const d = simulate(base, 480, 'sleep', notes)
           d.mood = clamp(d.mood + 3); d.goals = { ...d.goals, slept: true }
           notes.push({ text: `Kamu bangun pukul ${clock(d.minute)}. Energi pulih.`, kind: 'good' })
-          return commit(d, notes, 'Tidur… (8 jam)')
+          return playScene('sleep', 'Tidur… (8 jam)', 6500, s.minute, d, notes)
         }
         case 'warung': {
           if (hour < 6 || hour >= 21) return toast('Warung tutup (buka 06.00–21.00).', 'bad')
@@ -253,7 +275,7 @@ export const useGame = create<GameState>((set, get) => {
           d.money -= MEAL_PRICE; d.hunger = clamp(d.hunger + 40); d.mood = clamp(d.mood + 4)
           d.goals = { ...d.goals, ate: true }
           notes.push({ text: `Makan nasi pecel. -${rupiah(MEAL_PRICE)}`, kind: 'info' })
-          return commit(d, notes, 'Makan…')
+          return playScene('eat', 'Makan di warung…', 5500, s.minute, d, notes)
         }
         case 'gudang': {
           if (hour < 8 || hour >= 12) return toast('Shift gudang dimulai antara 08.00–12.00.', 'bad')
@@ -267,19 +289,19 @@ export const useGame = create<GameState>((set, get) => {
           notes.push({ text: `Shift selesai. Upah ${rupiah(wage)}${prod < 1 ? ' (produktivitas turun)' : ''}.`, kind: 'good' })
           const nl = jobLevel(d.shifts)
           if (nl.name !== lvl.name) notes.push({ text: `Naik level pekerjaan: ${nl.name}!`, kind: 'good' })
-          return commit(d, notes, 'Bekerja di gudang… (6 jam)')
+          return playScene('work', 'Bekerja di gudang… (6 jam)', 8000, s.minute, d, notes)
         }
         case 'taman': {
           const d = simulate(base, 60, 'awake', notes)
           d.energy = clamp(d.energy + 10); d.mood = clamp(d.mood + 8)
           notes.push({ text: 'Duduk santai di taman. Mood naik.', kind: 'good' })
-          return commit(d, notes, 'Istirahat…')
+          return playScene('rest', 'Istirahat di taman…', 4500, s.minute, d, notes)
         }
         case 'minimarket':
         case 'pasar': {
           const shop = SHOPS[s.nearby]
           if (hour < shop.open[0] || hour >= shop.open[1]) return toast(`${shop.name} tutup (buka ${shop.hours}).`, 'bad')
-          return set({ ui: { kind: 'shop', shop: s.nearby } })
+          return set((st) => ({ ui: { kind: 'shop', shop: s.nearby as ShopId }, scene: { kind: 'shop', label: shop.name, t0: performance.now(), dur: Infinity, fromMin: s.minute, toMin: s.minute, shop: s.nearby as ShopId, pulseAt: 0 }, cutKey: st.cutKey + 1 }))
         }
         case 'masak':
           return set({ ui: { kind: 'cook' } })

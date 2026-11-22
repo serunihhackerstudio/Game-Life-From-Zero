@@ -1,10 +1,10 @@
 import { hourOf, rupiah, useGame } from './store'
 import { INV_CAP, invCount, ITEMS, RECIPES, SHOPS, type ItemId } from './items'
 
-function Shell({ title, sub, children }: { title: string; sub?: string; children: React.ReactNode }) {
+function Shell({ title, sub, children, side }: { title: string; sub?: string; children: React.ReactNode; side?: boolean }) {
   const close = useGame((s) => s.closeUi)
   return (
-    <div className="overlay light" onMouseDown={(e) => { if (e.target === e.currentTarget) close() }}>
+    <div className={"overlay light" + (side ? " side" : "")} onMouseDown={(e) => { if (e.target === e.currentTarget) close() }}>
       <div className="sheet">
         <div className="sheet-h">
           <div><h2>{title}</h2>{sub && <small>{sub}</small>}</div>
@@ -33,7 +33,7 @@ function Shop({ id }: { id: 'minimarket' | 'pasar' }) {
   const open = h >= shop.open[0] && h < shop.open[1]
   const full = (pack: number) => invCount(inv) + pack > INV_CAP
   return (
-    <Shell title={shop.name} sub={`Buka ${shop.hours} · ${open ? 'BUKA' : 'TUTUP'}`}>
+    <Shell side title={shop.name} sub={`Buka ${shop.hours} · ${open ? 'BUKA' : 'TUTUP'}`}>
       <div className="row between"><span className="money-s">{rupiah(money)}</span><Bag /></div>
       <ul className="list">
         {shop.stock.map((st) => {

@@ -214,11 +214,11 @@ export function Truck({ p, ry = 0 }: { p: V3; ry?: number }) {
   )
 }
 
-export function Stool({ p, c = '#c0392b' }: { p: V3; c?: string }) {
+export function Stool({ p, c = '#c0392b', h = 0.4 }: { p: V3; c?: string; h?: number }) {
   return (
     <group position={p}>
-      <Cyl p={[0, 0.4, 0]} r={0.22} h={0.06} c={c} rough={0.5} />
-      {[0, 1, 2, 3].map((i) => <Cyl key={i} p={[Math.cos(i * 1.57 + 0.78) * 0.15, 0.2, Math.sin(i * 1.57 + 0.78) * 0.15]} r={0.025} h={0.4} c={c} rough={0.5} />)}
+      <Cyl p={[0, h, 0]} r={0.22} h={0.06} c={c} rough={0.5} />
+      {[0, 1, 2, 3].map((i) => <Cyl key={i} p={[Math.cos(i * 1.57 + 0.78) * 0.15, h / 2, Math.sin(i * 1.57 + 0.78) * 0.15]} r={0.025} h={h} c={c} rough={0.5} />)}
     </group>
   )
 }

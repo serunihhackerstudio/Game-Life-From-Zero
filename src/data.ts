@@ -51,8 +51,8 @@ export const COLLIDERS: Box[] = [
   { x: 7.5, z: -6.3, w: 1.8, d: 0.6 },
   { x: -20.4, z: -9.3, w: 0.5, d: 0.5 }, // tanaman pot teras kos
   { x: -15.6, z: -9.3, w: 0.5, d: 0.5 },
-  { x: -3.4, z: -9.3, w: 0.5, d: 0.5 }, // bangku plastik warung
-  { x: 3.4, z: -9.3, w: 0.5, d: 0.5 },
+  { x: -1.2, z: -9.25, w: 0.5, d: 0.5 }, // bangku bar warung
+  { x: 1.2, z: -9.25, w: 0.5, d: 0.5 },
   { x: 5.4, z: -8.8, w: 0.5, d: 0.5 }, // tong sampah
   { x: -25, z: -8.8, w: 0.5, d: 0.5 },
   { x: -26, z: -4.9, w: 0.4, d: 0.4 }, // tiang listrik

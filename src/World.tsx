@@ -1,14 +1,14 @@
 import { useEffect, useMemo, useRef } from 'react'
 import { useFrame, useThree } from '@react-three/fiber'
 import { Environment, Html, Lightformer } from '@react-three/drei'
-import { Color, DirectionalLight, Fog, HemisphereLight, MeshStandardMaterial, PointLight, Sprite } from 'three'
+import { Color, DirectionalLight, Fog, Group, HemisphereLight, Mesh, MeshStandardMaterial, PointLight, Sprite } from 'three'
 import { KOS_WALL_H, KOS_WALLS, LAMPS, TREES, ZONES } from './data'
 import { daylight, registerGlow, updateGlow } from './glow'
 import { Humanoid } from './Humanoid'
 import { Ball, Barrel, Bin, Bulb, Bx, Cart, Cyl, Flowers, Motorbike, Pallet, Plant, Pole, Sign, Stool, TBox, Tree, Truck, Window, Wire } from './props'
 import { asphalt, cloudTex, facade, facadeEmissive, grass, hazard, metal, pavement, plaster, roofTile, rollerDoor, stripes, tiled, wood } from './textures'
 import { Traffic } from './Traffic'
-import { useGame } from './store'
+import { useGame, visMinute } from './store'
 
 const Label = ({ pos, text }: { pos: [number, number, number]; text: string }) => (
   <Html position={pos} center distanceFactor={16} style={{ pointerEvents: 'none' }}>
@@ -29,7 +29,7 @@ function DayNight() {
     scene.background = new Color('#8fc7ff')
   }, [scene])
   useFrame(() => {
-    const { ang, sun, k, dusk } = daylight((useGame.getState().minute % 1440) / 60)
+    const { ang, sun, k, dusk } = daylight((visMinute() % 1440) / 60)
     tmp.copy(NIGHT_SKY).lerp(DAY_SKY, k).lerp(DUSK, dusk * 0.5)
     ;(scene.background as Color).copy(tmp)
     if (scene.fog) (scene.fog as Fog).color.copy(tmp)
@@ -62,7 +62,7 @@ function Clouds() {
   const refs = useRef<(Sprite | null)[]>([])
   const spec = useMemo(() => Array.from({ length: 8 }, (_, i) => ({ x: -90 + i * 26, y: 48 + (i % 3) * 9, z: -95 - (i % 2) * 20, s: 55 + (i % 4) * 12, v: 0.5 + (i % 3) * 0.25 })), [])
   useFrame((_, dt) => {
-    const { k } = daylight((useGame.getState().minute % 1440) / 60)
+    const { k } = daylight((visMinute() % 1440) / 60)
     refs.current.forEach((sp, i) => {
       if (!sp) return
       sp.position.x += spec[i].v * Math.min(dt, 0.05)
@@ -272,8 +272,8 @@ function Warung() {
       <Bulb p={[-1.8, 1.9, -10.0]} r={0.09} />
       <Bulb p={[1.8, 1.9, -10.0]} r={0.09} />
       <pointLight position={[0, 2.1, -9.7]} intensity={6} distance={6} color="#ffd9a0" />
-      <Stool p={[-3.4, 0, -9.3]} />
-      <Stool p={[3.4, 0, -9.3]} c="#2c6fb5" />
+      <Stool p={[-1.2, 0, -9.25]} h={0.58} />
+      <Stool p={[1.2, 0, -9.25]} h={0.58} c="#2c6fb5" />
       <Bin p={[5.4, 0, -8.8]} />
     </group>
   )
@@ -345,7 +345,7 @@ function Trees() {
 function LampLights() {
   const refs = useRef<(PointLight | null)[]>([])
   useFrame(() => {
-    const { k } = daylight((useGame.getState().minute % 1440) / 60)
+    const { k } = daylight((visMinute() % 1440) / 60)
     refs.current.forEach((l) => { if (l) l.intensity = (1 - k) * 30 })
   })
   return (
@@ -425,6 +425,48 @@ function Backdrop() {
   )
 }
 
+/** Properti yang muncul hanya saat adegan: piring makan, uap masakan, selimut tidur. */
+function SceneProps() {
+  const kind = useGame((s) => s.scene?.kind)
+  const steam = useRef<(Group | null)[]>([])
+  useFrame(() => {
+    const t = performance.now() / 1000
+    steam.current.forEach((g, i) => {
+      if (!g) return
+      const u = (t * 0.45 + i * 0.25) % 1
+      g.position.set(-16.47 + Math.sin(t + i) * 0.05, 1.35 + u * 0.7, -17.75)
+      g.scale.setScalar(0.5 + u * 1.2)
+      ;((g.children[0] as Mesh).material as MeshStandardMaterial).opacity = 0.5 * (1 - u)
+    })
+  })
+  if (kind === 'eat') return (
+    <group>
+      <Cyl p={[1.25, 1.2, -10.0]} r={0.17} h={0.02} c="#ffffff" rough={0.3} />
+      <Ball p={[1.25, 1.25, -10.0]} r={0.1} s={[1, 0.55, 1]} c="#f6f1e4" />
+      <Ball p={[1.33, 1.27, -9.96]} r={0.035} c="#c0392b" seg={8} />
+      <Ball p={[1.17, 1.27, -10.05]} r={0.045} c="#5aa05a" s={[1.3, 0.6, 1]} seg={8} />
+      <Cyl p={[0.78, 1.29, -10.05]} r={0.055} h={0.2} c="#d98a2d" rough={0.2} />
+    </group>
+  )
+  if (kind === 'cook') return (
+    <group>
+      {[0, 1, 2, 3].map((i) => (
+        <group key={i} ref={(g) => { steam.current[i] = g }}>
+          <mesh><sphereGeometry args={[0.12, 10, 8]} /><meshStandardMaterial color="#ffffff" transparent opacity={0.4} depthWrite={false} /></mesh>
+        </group>
+      ))}
+      <Bulb p={[-16.25, 2.2, -17.0]} r={0.06} s={0} />
+    </group>
+  )
+  if (kind === 'sleep') return (
+    <group>
+      <Bx x={-21.2} y={0.74} z={-16.35} w={1.45} h={0.2} d={1.5} c="#6aa0d8" rough={1} />
+      <Html position={[-21.2, 1.8, -17.1]} center style={{ pointerEvents: 'none' }}><div className="zzz">Z z z</div></Html>
+    </group>
+  )
+  return null
+}
+
 function Markers() {
   const nearby = useGame((s) => s.nearby)
   return (
@@ -474,6 +516,7 @@ export function World() {
       <Street />
       <Kos /><Warung /><Minimarket /><Pasar /><Gudang /><Taman /><Trees /><Lamps /><LampLights /><Utilities /><Backdrop /><Markers />
       <Cart p={[-7.2, 0, -7.4]} ry={0.1} />
+      <SceneProps />
       <group position={[-10.5, 0, -6.2]} rotation={[0, 0.15, 0]}><Motorbike color="#2980b9" /></group>
       <group position={[7.5, 0, -6.3]} rotation={[0, Math.PI - 0.1, 0]}><Motorbike color="#c0392b" /></group>
       <Bin p={[-25, 0, -8.8]} c="#c0392b" />

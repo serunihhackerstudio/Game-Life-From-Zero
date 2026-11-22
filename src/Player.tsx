@@ -1,7 +1,9 @@
 import { useEffect, useRef } from 'react'
 import { useFrame, useThree } from '@react-three/fiber'
 import { Group, MathUtils, Vector3 } from 'three'
-import { Humanoid, type Look } from './Humanoid'
+import { Humanoid, IDLE_ACT, type Act, type Look } from './Humanoid'
+import { sceneFrame } from './scenes'
+import { invCount } from './items'
 import { resolve, ZONES } from './data'
 import { playerPos, useGame } from './store'
 
@@ -11,10 +13,13 @@ const WALK = 3.4, RUN = 6.2
 export function Player() {
   const group = useRef<Group>(null)
   const speedRef = useRef(0)
+  const actRef = useRef<Act>({ ...IDLE_ACT })
+  const camLook = useRef(new Vector3(playerPos.x, 1.3, playerPos.z))
   const keys = useRef<Record<string, boolean>>({})
   const yaw = useRef(Math.PI)
   const dist = useRef(9)
   const camTarget = useRef(new Vector3())
+  const tmpLook = useRef(new Vector3())
   const gender = useGame((s) => s.gender)
   const { gl } = useThree()
 
@@ -56,6 +61,23 @@ export function Player() {
     if (!g) return
     const dt = Math.min(delta, 0.05)
     const s = useGame.getState()
+
+    // ---- adegan aktivitas: karakter + kamera dikendalikan oleh scenes.ts ----
+    if (s.scene) {
+      const t = (performance.now() - s.scene.t0) / 1000
+      const f = sceneFrame(s.scene, t, invCount(s.inv))
+      g.position.set(f.x, f.y, f.z)
+      g.rotation.set(f.rotX, f.rotY, 0)
+      speedRef.current = f.speed
+      Object.assign(actRef.current, { pose: f.pose, hold: f.hold, t, reach: f.reach, fill: f.fill, sitY: f.sitY })
+      const k = 1 - Math.exp(-5 * dt)
+      state.camera.position.lerp(camTarget.current.set(...f.cam), k)
+      camLook.current.lerp(tmpLook.current.set(...f.look), k)
+      state.camera.lookAt(camLook.current)
+      return
+    }
+    if (actRef.current.pose !== 'stand' || actRef.current.hold !== 'none') Object.assign(actRef.current, IDLE_ACT)
+    g.rotation.x = 0
     const frozen = s.paused || !!s.ui || !!s.busy || !!s.gameOver
     const k = keys.current
 
@@ -102,7 +124,8 @@ export function Player() {
     const d = dist.current
     camTarget.current.set(playerPos.x + Math.sin(yaw.current) * d, 1.9 + d * 0.5, playerPos.z + Math.cos(yaw.current) * d)
     state.camera.position.lerp(camTarget.current, 1 - Math.exp(-8 * dt))
-    state.camera.lookAt(playerPos.x, 1.3, playerPos.z)
+    camLook.current.lerp(tmpLook.current.set(playerPos.x, 1.3, playerPos.z), 1 - Math.exp(-8 * dt))
+    state.camera.lookAt(camLook.current)
   })
 
   const look: Look = gender === 'male'
@@ -111,7 +134,7 @@ export function Player() {
 
   return (
     <group ref={group}>
-      <Humanoid look={look} speedRef={speedRef} />
+      <Humanoid look={look} speedRef={speedRef} actRef={actRef} />
     </group>
   )
 }

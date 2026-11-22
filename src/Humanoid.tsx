@@ -3,6 +3,12 @@ import { useFrame } from '@react-three/fiber'
 import { RoundedBox } from '@react-three/drei'
 import { Color, type Group } from 'three'
 
+export type PoseName = 'stand' | 'sit' | 'carry' | 'eat' | 'cook' | 'browse' | 'sleep'
+export type Hold = 'none' | 'crate' | 'spoon' | 'spatula' | 'basket'
+/** Perintah adegan: pose khusus + benda di tangan. t = detik sejak adegan mulai. */
+export interface Act { pose: PoseName; hold: Hold; t: number; reach: number; fill: number; sitY: number }
+export const IDLE_ACT: Act = { pose: 'stand', hold: 'none', t: 0, reach: 0, fill: 0, sitY: 0.29 }
+
 export interface Look {
   shirt: string; pants: string; skin: string; hair: string
   female?: boolean
@@ -42,7 +48,7 @@ function Blk({ w, h, d, p, rot, c, rough = 0.85 }: { w: number; h: number; d: nu
 }
 const G = ({ r, children, p }: { r: React.RefObject<Group>; children?: ReactNode; p?: V3 }) => <group ref={r} position={p}>{children}</group>
 
-export function Humanoid({ look, speedRef }: { look: Look; speedRef?: MutableRefObject<number> }) {
+export function Humanoid({ look, speedRef, actRef }: { look: Look; speedRef?: MutableRefObject<number>; actRef?: MutableRefObject<Act> }) {
   const { shirt, pants, skin, hair, female, hoodie, backpack, elder, sandals } = look
   const hipL = useRef<Group>(null), hipR = useRef<Group>(null)
   const kneeL = useRef<Group>(null), kneeR = useRef<Group>(null)
@@ -50,6 +56,9 @@ export function Humanoid({ look, speedRef }: { look: Look; speedRef?: MutableRef
   const elL = useRef<Group>(null), elR = useRef<Group>(null)
   const torso = useRef<Group>(null), head = useRef<Group>(null)
   const st = useRef({ t: 0, phase: 0, k: 0 })
+  const rootG = useRef<Group>(null)
+  const crate = useRef<Group>(null), spoon = useRef<Group>(null), spatula = useRef<Group>(null), basket = useRef<Group>(null)
+  const fillRefs = useRef<(Group | null)[]>([])
 
   useFrame((_, dt0) => {
     const dt = Math.min(dt0, 0.05)
@@ -82,6 +91,56 @@ export function Humanoid({ look, speedRef }: { look: Look; speedRef?: MutableRef
     if (head.current) {
       head.current.rotation.set(-0.03 * w - 0.12 * run + Math.sin(s.t * 0.9) * 0.015 * idle, Math.sin(s.t * 0.5) * 0.18 * idle - sn * 0.05 * w, 0)
     }
+
+    // ---- pose adegan (aktivitas) ----
+    const a = actRef?.current
+    const pose = a?.pose ?? 'stand'
+    const hold = a?.hold ?? 'none'
+    if (crate.current) crate.current.visible = hold === 'crate'
+    if (spoon.current) spoon.current.visible = hold === 'spoon'
+    if (spatula.current) spatula.current.visible = hold === 'spatula'
+    if (basket.current) basket.current.visible = hold === 'basket'
+    fillRefs.current.forEach((g, i) => { if (g) g.visible = i < (a?.fill ?? 0) })
+    const sitting = pose === 'sit' || pose === 'eat'
+    if (rootG.current) rootG.current.position.y = sitting ? -(a?.sitY ?? 0.29) : 0
+    if (!a || pose === 'stand') return
+    const t = a.t
+    if (sitting) { set(hipL.current, -1.25); set(hipR.current, -1.25); set(kneeL.current, 1.25); set(kneeR.current, 1.25) }
+    const torsoRot = (x: number, y = 0) => { if (torso.current) torso.current.rotation.set(x, y, 0) }
+    const headRot = (x: number, y = 0) => { if (head.current) head.current.rotation.set(x, y, 0) }
+    switch (pose) {
+      case 'carry':
+        set(shL.current, -1.2, 0, -0.1); set(shR.current, -1.2, 0, 0.1); set(elL.current, -0.45); set(elR.current, -0.45)
+        torsoRot(-0.1 + sn * 0.0)
+        break
+      case 'sit':
+        set(shL.current, -0.35, 0, 0.12); set(shR.current, -0.35, 0, -0.12); set(elL.current, -0.9); set(elR.current, -0.9)
+        torsoRot(0.02); headRot(Math.sin(t * 0.8) * 0.03, Math.sin(t * 0.4) * 0.25)
+        break
+      case 'eat': {
+        const feed = (Math.sin(t * 3.2) + 1) / 2
+        set(shR.current, -0.85 - 0.45 * feed, 0, -0.05); set(elR.current, -0.95 - 1.15 * feed)
+        set(shL.current, -0.95, 0, 0.05); set(elL.current, -0.45)
+        torsoRot(0.1 - 0.05 * feed); headRot(0.18 - 0.1 * feed, 0)
+        break
+      }
+      case 'cook':
+        set(shR.current, -0.95 + Math.sin(t * 5) * 0.1, 0, -0.1 + Math.cos(t * 5) * 0.1); set(elR.current, -0.9)
+        set(shL.current, -0.8, 0, 0.1); set(elL.current, -0.7)
+        torsoRot(0.1); headRot(0.25, 0)
+        break
+      case 'browse': {
+        const r = a.reach
+        set(shL.current, -0.3, 0, 0.12); set(elL.current, -1.25)
+        set(shR.current, -1.35 * r, 0, -0.08 - 0.05 * r); set(elR.current, -0.25 * r - 0.1)
+        torsoRot(0.12 * r); headRot(0.05, Math.sin(t * 0.9) * 0.45 * (1 - r))
+        break
+      }
+      case 'sleep':
+        headRot(0, 0)
+        break
+    }
+    if (basket.current) basket.current.rotation.x = pose === 'browse' ? 1.25 + 0.3 : 0
   })
 
   const shoe = sandals ? '#6b4a2f' : '#f2f2f2'
@@ -122,6 +181,34 @@ export function Humanoid({ look, speedRef }: { look: Look; speedRef?: MutableRef
         {/* tangan */}
         <Ball r={0.044} p={[0, -0.275, 0.005]} s={[0.85, 1.25, 0.7]} c={skin} rough={0.6} />
         <Ball r={0.017} p={[side * -0.03, -0.25, 0.025]} s={[1, 1.5, 1]} c={skin} rough={0.6} seg={10} />
+        {side === 1 && (
+          <group ref={basket} position={[0, -0.34, 0.09]} visible={false}>
+            <Blk w={0.3} h={0.03} d={0.2} p={[0, -0.07, 0]} c="#c0392b" rough={0.6} />
+            <Blk w={0.3} h={0.14} d={0.015} p={[0, 0, 0.1]} c="#c0392b" rough={0.6} />
+            <Blk w={0.3} h={0.14} d={0.015} p={[0, 0, -0.1]} c="#c0392b" rough={0.6} />
+            <Blk w={0.015} h={0.14} d={0.2} p={[0.15, 0, 0]} c="#c0392b" rough={0.6} />
+            <Blk w={0.015} h={0.14} d={0.2} p={[-0.15, 0, 0]} c="#c0392b" rough={0.6} />
+            <mesh position={[0, 0.07, 0]} rotation={[0, 0, 0]}><torusGeometry args={[0.1, 0.01, 6, 16, Math.PI]} /><meshStandardMaterial color="#8a1f17" /></mesh>
+            {['#f1c40f', '#27ae60', '#e67e22', '#3498db', '#e74c3c', '#9b59b6'].map((c, i) => (
+              <group key={i} ref={(g) => { fillRefs.current[i] = g }} visible={false}>
+                <Blk w={0.08} h={0.09} d={0.07} p={[-0.1 + (i % 3) * 0.1, -0.02, i < 3 ? 0.04 : -0.04]} c={c} />
+              </group>
+            ))}
+          </group>
+        )}
+        {side === -1 && (
+          <>
+            <group ref={spoon} position={[0, -0.3, 0.05]} rotation={[-0.5, 0, 0]} visible={false}>
+              <Blk w={0.018} h={0.14} d={0.018} p={[0, -0.03, 0]} c="#cfd3d8" />
+              <Ball r={0.03} p={[0, -0.1, 0]} s={[1, 0.5, 1.3]} c="#cfd3d8" seg={8} />
+              <Ball r={0.022} p={[0, -0.098, 0.005]} s={[1, 0.5, 1.2]} c="#f6f1e4" seg={8} />
+            </group>
+            <group ref={spatula} position={[0, -0.3, 0.05]} rotation={[-0.6, 0, 0]} visible={false}>
+              <Blk w={0.02} h={0.26} d={0.02} p={[0, -0.05, 0]} c="#6b4a2f" />
+              <Blk w={0.09} h={0.1} d={0.012} p={[0, -0.2, 0]} c="#8a5a35" />
+            </group>
+          </>
+        )}
         {side === 1 && sleeveSkin && (
           <mesh position={[0, -0.2, 0]} castShadow>
             <cylinderGeometry args={[0.044, 0.044, 0.022, 16]} />
@@ -134,6 +221,7 @@ export function Humanoid({ look, speedRef }: { look: Look; speedRef?: MutableRef
 
   return (
     <group scale={0.97}>
+      <group ref={rootG}>
       {leg(1, hipL, kneeL)}
       {leg(-1, hipR, kneeR)}
       <Ball r={0.13} p={[0, 0.95, 0]} s={[1.2, 0.75, 0.85]} c={pants} rough={0.9} />
@@ -198,6 +286,12 @@ export function Humanoid({ look, speedRef }: { look: Look; speedRef?: MutableRef
           )}
         </G>
 
+        <group ref={crate} visible={false}>
+          <Blk w={0.44} h={0.3} d={0.36} p={[0, 0.2, 0.34]} c="#c99055" />
+          <Blk w={0.46} h={0.04} d={0.38} p={[0, 0.2, 0.34]} c="#a8722f" />
+          <Blk w={0.04} h={0.31} d={0.37} p={[0, 0.2, 0.34]} c="#a8722f" />
+        </group>
+
         {/* lengan */}
         {arm(1, shL, elL)}
         {arm(-1, shR, elR)}
@@ -218,6 +312,7 @@ export function Humanoid({ look, speedRef }: { look: Look; speedRef?: MutableRef
           </group>
         )}
       </G>
+      </group>
     </group>
   )
 }

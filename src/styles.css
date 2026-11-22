@@ -66,3 +66,16 @@ kbd { background: #ffd23f; color: #222; padding: 2px 8px; border-radius: 6px; fo
 .list button:hover:not(:disabled) { background: #4b93f5; }
 .list button:disabled { opacity: .35; cursor: not-allowed; }
 .hint { font-size: 12px; opacity: .6; margin: 10px 0 0; }
+
+/* adegan sinematik */
+.bars div { position: absolute; left: 0; right: 0; height: 9vh; background: #000; animation: bar .5s ease-out both; }
+.bars div:first-child { top: 0; --y: -100%; } .bars div:last-child { bottom: 0; --y: 100%; }
+@keyframes bar { from { transform: translateY(var(--y)); } to { transform: none; } }
+.caption { position: absolute; bottom: 10.5vh; left: 50%; transform: translateX(-50%); font-size: 18px; letter-spacing: .04em; text-shadow: 0 2px 8px #000; white-space: nowrap; animation: fade .6s .2s both; }
+@keyframes fade { from { opacity: 0; } to { opacity: 1; } }
+.cut { position: absolute; inset: 0; background: #000; pointer-events: none; animation: cut .7s ease-out both; }
+@keyframes cut { 0% { opacity: 1; } 100% { opacity: 0; } }
+.overlay.side { background: transparent; justify-items: end; padding-right: 3vw; pointer-events: none; }
+.overlay.side .sheet { pointer-events: auto; max-width: 420px; }
+.zzz { font-size: 30px; font-weight: 800; color: #cfe4ff; text-shadow: 0 2px 6px #000; animation: zz 2s ease-in-out infinite; }
+@keyframes zz { 0% { transform: translateY(0); opacity: 0; } 30% { opacity: 1; } 100% { transform: translateY(-30px); opacity: 0; } }

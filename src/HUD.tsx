@@ -1,4 +1,5 @@
-import { clock, dayOf, hourOf, jobLevel, MEAL_PRICE, periodOf, RENT, rupiah, useGame } from './store'
+import { useEffect, useState } from 'react'
+import { clock, dayOf, hourOf, jobLevel, MEAL_PRICE, periodOf, RENT, rupiah, useGame, visMinute } from './store'
 import { ZONES } from './data'
 import { Panels } from './Panels'
 import { INV_CAP, invCount } from './items'
@@ -15,7 +16,17 @@ function Bar({ label, value, color }: { label: string; value: number; color: str
 
 export function HUD() {
   const s = useGame()
-  const day = dayOf(s.minute)
+  const [, force] = useState(0)
+  const scening = !!s.scene && isFinite(s.scene.dur)
+  useEffect(() => { // jam berjalan cepat selama adegan
+    if (!scening) return
+    let id = 0
+    const loop = () => { force((x) => x + 1); id = requestAnimationFrame(loop) }
+    id = requestAnimationFrame(loop)
+    return () => cancelAnimationFrame(id)
+  }, [scening])
+  const vm = visMinute()
+  const day = dayOf(vm)
   const lvl = jobLevel(s.shifts)
   const zone = ZONES.find((z) => z.id === s.nearby)
   const dueIn = s.rentDueDay - day
@@ -25,7 +36,7 @@ export function HUD() {
   return (
     <div className="hud">
       <div className="panel tl">
-        <div className="who">{s.name} <small>· Hari {day} · {clock(s.minute)} {periodOf(hourOf(s.minute))}</small></div>
+        <div className="who">{s.name} <small>· Hari {day} · {clock(vm)} {periodOf(hourOf(vm))}</small></div>
         <div className="money">{rupiah(s.money)}</div>
         <Bar label="Kesehatan" value={s.health} color="#e74c3c" />
         <Bar label="Energi" value={s.energy} color="#f1c40f" />
@@ -60,7 +71,13 @@ export function HUD() {
 
       <Panels />
 
-      {s.busy && <div className="overlay"><div>{s.busy}</div></div>}
+      {s.scene && (
+        <>
+          <div className="bars"><div /><div /></div>
+          {scening && <div className="caption">{s.scene.label}</div>}
+        </>
+      )}
+      {s.cutKey > 0 && <div key={s.cutKey} className="cut" />}
 
       {s.paused && (
         <div className="overlay">
