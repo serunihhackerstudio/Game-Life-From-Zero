@@ -2,6 +2,8 @@ import { create } from 'zustand'
 import { START, type ZoneId } from './data'
 import { clearSave, loadSave, writeSave } from './save'
 import { audio } from './audio'
+import { AUTO_MULT, starsOf, wageMult } from './minigames/core'
+import { MINI_JOBS } from './minigames/games'
 import { JOBS, type JobDef, type JobId } from './jobs'
 import { AFF_MAX, lateFeeWaived, mealDiscount, NPCS, rentDiscount, shopDiscount, type Ctx, type NpcId } from './npcs'
 import { INV_CAP, invCount, ITEMS, RECIPES, SHOPS, type ItemId, type ShopId } from './items'
@@ -45,6 +47,11 @@ export const playerPos = { x: START.x, z: START.z, rot: START.rot }
 
 export type SceneKind = 'talk' | 'work' | 'koran' | 'parkir' | 'pelayan' | 'kurir' | 'nasgor' | 'ojek' | 'drink' | 'mandi' | 'eat' | 'shop' | 'cook' | 'sleep' | 'rest'
 export interface SceneInfo { kind: SceneKind; label: string; t0: number; dur: number; fromMin: number; toMin: number; shop?: ShopId; npc?: NpcId; pulseAt: number }
+export interface MiniState {
+  job: JobId; phase: 'intro' | 'brief' | 'play' | 'result'
+  perf: number; stars: number; auto: boolean; quit: boolean
+  wage: number; tip: number; base: number; mult: number
+}
 export type Ui = null | { kind: 'shop'; shop: ShopId } | { kind: 'cook' } | { kind: 'inv' } | { kind: 'jobs' } | { kind: 'talk'; npc: NpcId; node: string }
 interface Goals { day: number; worked: boolean; ate: boolean; slept: boolean; bathed?: boolean }
 interface Toast { id: number; text: string; kind: 'info' | 'good' | 'bad' }
@@ -54,7 +61,7 @@ interface Data {
   name: string; gender: Gender
   money: number; health: number; energy: number; hunger: number; mood: number; thirst: number; hygiene: number
   minute: number; rentDueDay: number; shifts: number; goals: Goals; inv: Record<string, number>
-  hired: string[]; jobShifts: Record<string, number>; jobDay: Record<string, number>
+  hired: string[]; jobShifts: Record<string, number>; jobDay: Record<string, number>; jobPlays: Record<string, number>
   affinity: Record<string, number>; talkDay: Record<string, number>
   gameOver: string | null
 }
@@ -64,6 +71,7 @@ interface GameState extends Data {
   paused: boolean
   ui: Ui
   scene: SceneInfo | null
+  mini: MiniState | null
   cutKey: number
   busy: string | null
   nearby: ZoneId | null
@@ -81,6 +89,11 @@ interface GameState extends Data {
   eat: (item: ItemId) => void
   applyJob: (id: JobId) => void
   openTalk: (npc: NpcId) => void
+  beginMini: () => void
+  autoMini: () => void
+  endMini: (perf: number, quit: boolean) => void
+  claimMini: () => void
+  cancelMini: () => void
   pick: (i: number) => void
   tick: (dt: number, running: boolean) => void
   interact: () => void
@@ -134,6 +147,7 @@ const DEFAULT: Data = {
   hired: [],
   jobShifts: {},
   jobDay: {},
+  jobPlays: {},
   affinity: {},
   talkDay: {},
   gameOver: null,
@@ -153,7 +167,7 @@ export const useGame = create<GameState>((set, get) => {
   const dataOf = (s: GameState): Data => ({
     name: s.name, gender: s.gender, money: s.money, health: s.health, energy: s.energy,
     hunger: s.hunger, mood: s.mood, thirst: s.thirst, hygiene: s.hygiene, minute: s.minute, rentDueDay: s.rentDueDay,
-    shifts: s.shifts, goals: s.goals, inv: s.inv, hired: s.hired, jobShifts: s.jobShifts, jobDay: s.jobDay, affinity: s.affinity, talkDay: s.talkDay, gameOver: s.gameOver,
+    shifts: s.shifts, goals: s.goals, inv: s.inv, hired: s.hired, jobShifts: s.jobShifts, jobDay: s.jobDay, jobPlays: s.jobPlays, affinity: s.affinity, talkDay: s.talkDay, gameOver: s.gameOver,
   })
   const commit = (d: Data, notes: Note[]) => {
     set({ ...d })
@@ -195,6 +209,28 @@ export const useGame = create<GameState>((set, get) => {
     playScene('eat', 'Makan di warung…', 5500, s.minute, d, notes)
   }
 
+  /** Mini-game pekerjaan: adegan pembuka singkat, lalu petunjuk, permainan, hasil, adegan penutup. */
+  const openMini = (job: JobDef) => {
+    const s = get()
+    set((st) => ({
+      mini: { job: job.id, phase: 'intro', perf: 0, stars: 1, auto: false, quit: false, wage: 0, tip: 0, base: 0, mult: 0 },
+      scene: { kind: job.scene, label: '', t0: performance.now(), dur: Infinity, fromMin: s.minute, toMin: s.minute, pulseAt: 0 },
+      cutKey: st.cutKey + 1,
+    }))
+    setTimeout(() => { const m = get().mini; if (m && m.job === job.id && m.phase === 'intro') set({ mini: { ...m, phase: 'brief' } }) }, 1800)
+  }
+  const settle = (perf: number, auto: boolean, quit: boolean) => {
+    const s = get(), m = s.mini
+    if (!m) return
+    const job = JOBS[m.job], lvl = jobLevel(s.jobShifts[job.id] ?? 0)
+    const mult = auto ? AUTO_MULT : wageMult(perf)
+    const base = job.wage * lvl.mult
+    const wage = Math.round((base * mult) / 500) * 500
+    const tipRate = auto ? 0 : perf >= 0.85 ? 0.15 : perf >= 0.6 ? 0.08 : 0
+    const tip = s.hygiene < 25 ? 0 : Math.round((base * tipRate) / 500) * 500
+    set({ mini: { ...m, phase: 'result', perf, stars: auto ? 1 : starsOf(perf), auto, quit, wage, tip, base: Math.round(base), mult } })
+  }
+
   /** Mulai shift kerja: syarat dicek, hasil diterapkan di akhir adegan. */
   const workJob = (job: JobDef) => {
     const s = get()
@@ -203,6 +239,7 @@ export const useGame = create<GameState>((set, get) => {
     if (s.jobDay[job.id] === day) return toast(`Kamu sudah bekerja sebagai ${job.name.toLowerCase()} hari ini.`, 'info')
     if (hour < job.start[0] || hour >= job.start[1]) return toast(`Shift ${job.name.toLowerCase()} dimulai antara ${String(job.start[0]).padStart(2, '0')}.00–${String(job.start[1]).padStart(2, '0')}.00.`, 'bad')
     if (s.energy < 25) return toast('Terlalu lelah untuk bekerja. Istirahat dulu.', 'bad')
+    if (MINI_JOBS.has(job.id)) return openMini(job)
     const before = s.jobShifts[job.id] ?? 0
     const lvl = jobLevel(before)
     const prod = (s.hunger < 25 ? 0.7 : 1) * (s.mood < 30 ? 0.9 : 1) * (s.thirst < 25 ? 0.85 : 1) * (s.hygiene < 25 ? 0.9 : 1)
@@ -221,14 +258,14 @@ export const useGame = create<GameState>((set, get) => {
 
   return {
     ...DEFAULT,
-    screen: 'menu', paused: false, ui: null, scene: null, cutKey: 0, busy: null, nearby: null, toasts: [], hasSave: false,
+    screen: 'menu', paused: false, ui: null, scene: null, mini: null, cutKey: 0, busy: null, nearby: null, toasts: [], hasSave: false,
 
     refreshSave: async () => set({ hasSave: !!(await loadSave()) }),
 
     newGame: (name, gender) => {
       Object.assign(playerPos, START)
       acc = 0; runAcc = 0
-      set({ ...DEFAULT, name: name.trim().slice(0, 16) || 'Andi', gender, screen: 'playing', paused: false, ui: null, scene: null, busy: null, nearby: null, toasts: [] })
+      set({ ...DEFAULT, name: name.trim().slice(0, 16) || 'Andi', gender, screen: 'playing', paused: false, ui: null, scene: null, mini: null, busy: null, nearby: null, toasts: [] })
       toast('Selamat datang di Kota Harapan! Kamu punya Rp100.000. Cari kerja dan bayar kos tiap 7 hari.', 'info')
       get().saveNow()
     },
@@ -239,17 +276,17 @@ export const useGame = create<GameState>((set, get) => {
       playerPos.x = sv.px; playerPos.z = sv.pz; playerPos.rot = sv.prot
       acc = 0; runAcc = 0
       const { v: _v, px: _px, pz: _pz, prot: _prot, ...data } = sv
-      set({ ...data, thirst: data.thirst ?? 100, hygiene: data.hygiene ?? 100, inv: data.inv ?? {}, hired: (data.hired ?? ['gudang']).filter((h: string) => h !== 'satpam'), jobShifts: data.jobShifts ?? { gudang: data.shifts ?? 0 }, jobDay: data.jobDay ?? {}, affinity: data.affinity ?? {}, talkDay: data.talkDay ?? {}, screen: 'playing', paused: false, ui: null, scene: null, busy: null, nearby: null, toasts: [] })
+      set({ ...data, thirst: data.thirst ?? 100, hygiene: data.hygiene ?? 100, inv: data.inv ?? {}, hired: (data.hired ?? ['gudang']).filter((h: string) => h !== 'satpam'), jobShifts: data.jobShifts ?? { gudang: data.shifts ?? 0 }, jobDay: data.jobDay ?? {}, jobPlays: data.jobPlays ?? {}, affinity: data.affinity ?? {}, talkDay: data.talkDay ?? {}, screen: 'playing', paused: false, ui: null, scene: null, mini: null, busy: null, nearby: null, toasts: [] })
       toast('Permainan dilanjutkan.', 'info')
     },
 
     toMenu: () => {
       get().saveNow()
-      set({ screen: 'menu', paused: false, ui: null, scene: null, busy: null })
+      set({ screen: 'menu', paused: false, ui: null, scene: null, mini: null, busy: null })
       void get().refreshSave()
     },
 
-    togglePause: () => { if (get().screen === 'playing' && !get().gameOver && !get().ui && !get().busy) set((s) => ({ paused: !s.paused })) },
+    togglePause: () => { if (get().screen === 'playing' && !get().gameOver && !get().ui && !get().busy && !get().mini) set((s) => ({ paused: !s.paused })) },
 
     openUi: (u) => { const s = get(); if (s.screen === 'playing' && !s.paused && !s.busy && !s.gameOver) set({ ui: u }) },
     closeUi: () => {
@@ -351,6 +388,33 @@ export const useGame = create<GameState>((set, get) => {
         default:
           return get().closeUi()
       }
+    },
+
+    beginMini: () => { const m = get().mini; if (m && m.phase === 'brief') set({ mini: { ...m, phase: 'play' } }) },
+    autoMini: () => {
+      const s = get(), m = s.mini
+      if (!m || m.phase !== 'brief' || (s.jobPlays[m.job] ?? 0) < 3) return
+      settle(0, true, false)
+    },
+    endMini: (perf, quit) => settle(quit ? 0 : perf, false, quit),
+    cancelMini: () => { if (get().mini?.phase === 'brief' || get().mini?.phase === 'intro') set((st) => ({ mini: null, scene: null, cutKey: st.cutKey + 1 })) },
+    claimMini: () => {
+      const s = get(), m = s.mini
+      if (!m || m.phase !== 'result') return
+      const job = JOBS[m.job], day = dayOf(s.minute), before = s.jobShifts[job.id] ?? 0
+      const lvl = jobLevel(before)
+      const notes: Note[] = []
+      const d = simulate(dataOf(s), job.hours * 60, 'work', notes, job.energyPerHour)
+      d.money += m.wage + m.tip; d.shifts += 1; d.mood = clamp(d.mood + (m.stars >= 3 ? 4 : 2))
+      d.jobShifts = { ...d.jobShifts, [job.id]: before + 1 }
+      d.jobDay = { ...d.jobDay, [job.id]: day }
+      if (!m.auto) d.jobPlays = { ...d.jobPlays, [job.id]: (d.jobPlays[job.id] ?? 0) + 1 }
+      d.goals = { ...d.goals, worked: true }
+      notes.push({ text: `Shift ${job.name.toLowerCase()} selesai. Upah ${rupiah(m.wage)}${m.tip ? ` + tip ${rupiah(m.tip)}` : ''}.`, kind: 'good' })
+      const nl = jobLevel(before + 1)
+      if (nl.name !== lvl.name) notes.push({ text: `Naik level ${job.name.toLowerCase()}: ${nl.name}!`, kind: 'good' })
+      set({ mini: null })
+      playScene(job.scene, 'Shift selesai…', 2400, s.minute, d, notes)
     },
 
     applyJob: (id) => {

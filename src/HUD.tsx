@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { clock, dayOf, hourOf, jobLevel, MEAL_PRICE, periodOf, RENT, rupiah, useGame, visMinute } from './store'
 import { ZONES } from './data'
 import { Panels } from './Panels'
+import { MiniHost } from './minigames/MiniHost'
 import { useSettings } from './settings'
 import { affLabel, NPCS } from './npcs'
 import { INV_CAP, invCount } from './items'
@@ -99,6 +100,7 @@ export function HUD() {
       {showHelp && <div className="help">WASD/panah: jalan · Shift: lari · Drag mouse / Q R: kamera · Scroll: zoom · E: interaksi · I: tas · Esc: jeda</div>}
 
       <Panels />
+      <MiniHost />
 
       {s.scene && (
         <>
