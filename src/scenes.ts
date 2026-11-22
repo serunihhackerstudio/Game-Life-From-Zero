@@ -37,21 +37,23 @@ export function sceneFrame(sc: SceneInfo, t: number, bagCount: number): Frame {
       f.cam = [-14.3, 1.65, -15.2 + Math.sin(t * 0.4) * 0.2]; f.look = [-16.2, 1.15, -17.4]
       break
     case 'sleep':
-      f.x = -21.2; f.y = 0.85; f.z = -15.7; f.rotX = -PI / 2; f.rotY = 0; f.pose = 'sleep'
-      f.cam = [-18.8, 2.5 + t * 0.02, -13.6]; f.look = [-21.2, 0.8, -16.4]
+      // telentang di kasur: kepala di bantal (z -17.3), kaki ke arah +z
+      f.x = -21.2; f.y = 0.85; f.z = -15.75; f.rotX = -PI / 2; f.rotY = 0; f.pose = 'sleep'
+      f.cam = [-19.2 + Math.sin(t * 0.35) * 0.2, 1.75 + t * 0.045, -14.3 + t * 0.02]
+      f.look = [-21.15, 0.9, -16.6]
       break
     case 'rest':
       f.x = 4; f.z = 13.0; f.rotY = PI; f.pose = 'sit'; f.sitY = 0.29
       f.cam = [6.3, 1.5, 10.5]; f.look = [4.1, 1.05, 13]
       break
     case 'shop': {
-      const mini = sc.shop === 'minimarket'
+      const mini = sc.shop === 'kelontong'
       // reach: tangan terulur sebentar setiap kali membeli
       const since = performance.now() - sc.pulseAt
       f.reach = sc.pulseAt && since < 800 ? Math.sin((since / 800) * PI) : 0
       f.fill = Math.min(6, bagCount)
       f.pose = 'browse'; f.hold = 'basket'
-      if (mini) { f.x = 9.6; f.z = -8.7; f.rotY = PI; f.cam = [7.0, 1.7, -6.1]; f.look = [11.2, 1.25, -9.3] }
+      if (mini) { f.x = 9.6; f.z = -8.6; f.rotY = PI; f.cam = [6.9, 1.7, -5.9]; f.look = [11.3, 1.3, -9.4] }
       else { f.x = 22.5; f.z = 8.7; f.rotY = 0; f.cam = [20.2, 1.75, 6.4]; f.look = [24.6, 1.25, 10.2] }
       break
     }

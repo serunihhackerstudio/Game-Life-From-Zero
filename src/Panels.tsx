@@ -23,7 +23,7 @@ function Bag() {
   return <div className="bag">🎒 Tas {n}/{INV_CAP}</div>
 }
 
-function Shop({ id }: { id: 'minimarket' | 'pasar' }) {
+function Shop({ id }: { id: 'kelontong' | 'pasar' }) {
   const shop = SHOPS[id]
   const money = useGame((s) => s.money)
   const inv = useGame((s) => s.inv)
@@ -87,14 +87,14 @@ function Inventory() {
   return (
     <Shell title="Tas" sub="Barang yang kamu bawa">
       <div className="row between"><span /> <Bag /></div>
-      {entries.length === 0 ? <p className="hint">Tas kosong. Belanja di Mini Mart atau Pasar.</p> : (
+      {entries.length === 0 ? <p className="hint">Tas kosong. Belanja di warung kelontong atau pasar.</p> : (
         <ul className="list">
           {entries.map(([id, n]) => (
             <li key={id}>
               <span className="ic">{ITEMS[id].icon}</span>
-              <span className="nm">{ITEMS[id].name}<em>{ITEMS[id].eat ? 'Bisa langsung dimakan' : 'Bahan masak (pakai di kompor kos)'}</em></span>
+              <span className="nm">{ITEMS[id].name}<em>{ITEMS[id].eat ? 'Bisa langsung dikonsumsi' : 'Bahan masak (pakai di kompor kos)'}</em></span>
               <span className="pr">×{n}</span>
-              {ITEMS[id].eat ? <button onClick={() => eat(id)}>Makan</button> : <span style={{ width: 64 }} />}
+              {ITEMS[id].eat ? <button onClick={() => eat(id)}>{ITEMS[id].eat?.verb ?? 'Makan'}</button> : <span style={{ width: 64 }} />}
             </li>
           ))}
         </ul>

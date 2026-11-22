@@ -221,14 +221,16 @@ export const useGame = create<GameState>((set, get) => {
     eat: (itemId) => {
       const s = get(), def = ITEMS[itemId]
       if (!def.eat || (s.inv[itemId] ?? 0) < 1 || s.busy || s.gameOver) return
-      if (s.hunger >= 95) return toast('Kamu masih kenyang.', 'info')
+      const e = def.eat, verb = e.verb ?? 'Makan'
+      if (e.hunger > 0 && s.hunger >= 95 && !e.energy) return toast('Kamu masih kenyang.', 'info')
       const notes: Note[] = []
       const d = simulate(dataOf(s), 5, 'awake', notes)
       const inv = { ...d.inv }; inv[itemId] -= 1; if (inv[itemId] <= 0) delete inv[itemId]
       d.inv = inv
-      d.hunger = clamp(d.hunger + def.eat.hunger); d.mood = clamp(d.mood + def.eat.mood)
-      d.goals = { ...d.goals, ate: true }
-      notes.push({ text: `Makan ${def.name}. Lapar +${def.eat.hunger}.`, kind: 'info' })
+      d.hunger = clamp(d.hunger + e.hunger); d.energy = clamp(d.energy + (e.energy ?? 0)); d.mood = clamp(d.mood + e.mood)
+      if (e.hunger >= 10) d.goals = { ...d.goals, ate: true }
+      const gains = [e.hunger ? `Lapar +${e.hunger}` : '', e.energy ? `Energi +${e.energy}` : '', `Mood +${e.mood}`].filter(Boolean).join(', ')
+      notes.push({ text: `${verb} ${def.name}. ${gains}.`, kind: 'info' })
       commit(d, notes)
     },
 
@@ -297,7 +299,7 @@ export const useGame = create<GameState>((set, get) => {
           notes.push({ text: 'Duduk santai di taman. Mood naik.', kind: 'good' })
           return playScene('rest', 'Istirahat di taman…', 4500, s.minute, d, notes)
         }
-        case 'minimarket':
+        case 'kelontong':
         case 'pasar': {
           const shop = SHOPS[s.nearby]
           if (hour < shop.open[0] || hour >= shop.open[1]) return toast(`${shop.name} tutup (buka ${shop.hours}).`, 'bad')

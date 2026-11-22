@@ -59,6 +59,8 @@ export function Humanoid({ look, speedRef, actRef }: { look: Look; speedRef?: Mu
   const rootG = useRef<Group>(null)
   const crate = useRef<Group>(null), spoon = useRef<Group>(null), spatula = useRef<Group>(null), basket = useRef<Group>(null)
   const fillRefs = useRef<(Group | null)[]>([])
+  const packRef = useRef<Group>(null), lids = useRef<Group>(null)
+  const shoeRefs = useRef<(Group | null)[]>([])
 
   useFrame((_, dt0) => {
     const dt = Math.min(dt0, 0.05)
@@ -101,6 +103,10 @@ export function Humanoid({ look, speedRef, actRef }: { look: Look; speedRef?: Mu
     if (spatula.current) spatula.current.visible = hold === 'spatula'
     if (basket.current) basket.current.visible = hold === 'basket'
     fillRefs.current.forEach((g, i) => { if (g) g.visible = i < (a?.fill ?? 0) })
+    const asleep = pose === 'sleep'
+    if (packRef.current) packRef.current.visible = !asleep
+    if (lids.current) lids.current.visible = asleep
+    shoeRefs.current.forEach((g) => { if (g) g.visible = !asleep })
     const sitting = pose === 'sit' || pose === 'eat'
     if (rootG.current) rootG.current.position.y = sitting ? -(a?.sitY ?? 0.29) : 0
     if (!a || pose === 'stand') return
@@ -136,8 +142,10 @@ export function Humanoid({ look, speedRef, actRef }: { look: Look; speedRef?: Mu
         torsoRot(0.12 * r); headRot(0.05, Math.sin(t * 0.9) * 0.45 * (1 - r))
         break
       }
-      case 'sleep':
-        headRot(0, 0)
+      case 'sleep': // berbaring telentang: tangan di sisi badan, kepala menoleh sedikit
+        set(shL.current, 0.05, 0, -0.2); set(shR.current, 0.05, 0, 0.2); set(elL.current, -0.2); set(elR.current, -0.2)
+        set(hipL.current, 0, 0, 0.03); set(hipR.current, 0, 0, -0.03); set(kneeL.current, 0.03); set(kneeR.current, 0.03)
+        headRot(0.1, 0.5 + Math.sin(t * 0.3) * 0.03)
         break
     }
     if (basket.current) basket.current.rotation.x = pose === 'browse' ? 1.25 + 0.3 : 0
@@ -156,7 +164,7 @@ export function Humanoid({ look, speedRef, actRef }: { look: Look; speedRef?: Mu
       <G r={knee} p={[0, -0.43, 0]}>
         <Cap r={0.06} l={0.3} p={[0, -0.2, 0]} c={pants} />
         {/* sepatu: grup kaki di pergelangan (0.43 m di bawah lutut) */}
-        <group position={[0, -0.43, 0]}>
+        <group ref={(g) => { shoeRefs.current[side === 1 ? 0 : 1] = g }} position={[0, -0.43, 0]}>
         <RoundedBox args={[0.108, 0.04, 0.28]} radius={0.018} smoothness={3} position={[0, -0.052, 0.04]} castShadow>
           <meshStandardMaterial color={sole} roughness={0.7} />
         </RoundedBox>
@@ -265,6 +273,14 @@ export function Humanoid({ look, speedRef, actRef }: { look: Look; speedRef?: Mu
               <Blk w={0.042} h={0.008} d={0.01} p={[sd * 0.042, 0.048, 0.098]} rot={[0, 0, sd * -0.12]} c={elder ? '#bdbdbd' : hairCol} />
             </group>
           ))}
+          <group ref={lids} visible={false}>
+            {[1, -1].map((sd) => (
+              <group key={sd}>
+                <Ball r={0.024} p={[sd * 0.04, 0.013, 0.096]} s={[1.4, 0.85, 0.6]} c={skin} seg={10} />
+                <Blk w={0.036} h={0.005} d={0.006} p={[sd * 0.04, 0.003, 0.108]} c="#2a1810" />
+              </group>
+            ))}
+          </group>
           <Ball r={0.019} p={[0, -0.018, 0.106]} s={[1, 1.25, 1.2]} c={skinDark} rough={0.6} seg={12} />
           <Blk w={0.042} h={0.007} d={0.008} p={[0, -0.062, 0.098]} c={female ? '#a23d4a' : '#8c4a44'} rough={0.5} />
           {elder && <Blk w={0.06} h={0.014} d={0.012} p={[0, -0.047, 0.1]} c="#cfcfcf" />}
@@ -298,7 +314,7 @@ export function Humanoid({ look, speedRef, actRef }: { look: Look; speedRef?: Mu
 
         {/* tas punggung */}
         {backpack && (
-          <group>
+          <group ref={packRef}>
             <RoundedBox args={[0.3, 0.42, 0.15]} radius={0.04} smoothness={4} position={[0, 0.3, -0.2]} castShadow>
               <meshStandardMaterial color="#1c1c21" roughness={0.75} />
             </RoundedBox>
