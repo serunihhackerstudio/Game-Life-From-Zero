@@ -1,4 +1,5 @@
-import { useEffect } from 'react'
+import { Suspense, useEffect } from 'react'
+import { Html } from '@react-three/drei'
 import { Canvas } from '@react-three/fiber'
 import { HUD } from './HUD'
 import { Menu } from './Menu'
@@ -23,8 +24,10 @@ export default function App() {
   return (
     <>
       <Canvas shadows camera={{ fov: 55, near: 0.1, far: 200, position: [-18, 8, -22] }}>
-        <World />
-        <Player />
+        <Suspense fallback={<Html center><div className="label">Memuat karakter…</div></Html>}>
+          <World />
+          <Player />
+        </Suspense>
       </Canvas>
       <HUD />
     </>

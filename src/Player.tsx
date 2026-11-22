@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react'
 import { useFrame, useThree } from '@react-three/fiber'
 import { Group, MathUtils, Vector3 } from 'three'
-import { Humanoid, type Look, type Parts } from './Humanoid'
+import { Character, type Pose } from './Character'
 import { resolve, ZONES } from './data'
 import { playerPos, useGame } from './store'
 
@@ -10,11 +10,10 @@ const WALK = 3.4, RUN = 6.2
 
 export function Player() {
   const group = useRef<Group>(null)
-  const parts = useRef<Parts | null>(null)
+  const pose = useRef<Pose>('idle')
   const keys = useRef<Record<string, boolean>>({})
   const yaw = useRef(Math.PI)
-  const dist = useRef(9)
-  const phase = useRef(0)
+  const dist = useRef(3.8)
   const camTarget = useRef(new Vector3())
   const gender = useGame((s) => s.gender)
   const { gl } = useThree()
@@ -31,7 +30,7 @@ export function Player() {
     const pd = () => { dragging = true }
     const pu = () => { dragging = false }
     const pm = (e: PointerEvent) => { if (dragging) yaw.current -= e.movementX * 0.005 }
-    const wheel = (e: WheelEvent) => { dist.current = MathUtils.clamp(dist.current + e.deltaY * 0.01, 5, 14) }
+    const wheel = (e: WheelEvent) => { dist.current = MathUtils.clamp(dist.current + e.deltaY * 0.01, 2.2, 10) }
     const el = gl.domElement
     window.addEventListener('keydown', down); window.addEventListener('keyup', up); window.addEventListener('blur', blur)
     el.addEventListener('pointerdown', pd); window.addEventListener('pointerup', pu); window.addEventListener('pointermove', pm)
@@ -79,17 +78,7 @@ export function Player() {
     g.position.set(playerPos.x, 0, playerPos.z)
     g.rotation.y = playerPos.rot
 
-    // animasi jalan
-    const p = parts.current
-    if (p) {
-      phase.current += speed * dt * 2.2
-      const amp = speed > 0 ? Math.min(0.9, speed * 0.15) : 0
-      const sw = Math.sin(phase.current) * amp
-      if (p.legL.current) p.legL.current.rotation.x = sw
-      if (p.legR.current) p.legR.current.rotation.x = -sw
-      if (p.armL.current) p.armL.current.rotation.x = -sw
-      if (p.armR.current) p.armR.current.rotation.x = sw
-    }
+    pose.current = speed === 0 ? 'idle' : speed >= RUN ? 'run' : 'walk'
 
     // zona interaksi terdekat
     let best: (typeof ZONES)[number] | null = null, bd = Infinity
@@ -102,18 +91,14 @@ export function Player() {
 
     // kamera orang ketiga
     const d = dist.current
-    camTarget.current.set(playerPos.x + Math.sin(yaw.current) * d, 5.5 + d * 0.25, playerPos.z + Math.cos(yaw.current) * d)
+    camTarget.current.set(playerPos.x + Math.sin(yaw.current) * d, 1.55 + d * 0.3, playerPos.z + Math.cos(yaw.current) * d)
     state.camera.position.lerp(camTarget.current, 1 - Math.exp(-8 * dt))
-    state.camera.lookAt(playerPos.x, 1.2, playerPos.z)
+    state.camera.lookAt(playerPos.x, 1.45, playerPos.z)
   })
-
-  const look: Look = gender === 'male'
-    ? { shirt: '#3a6ea5', pants: '#2c3e50', skin: '#c68e64', hair: '#1c1410' }
-    : { shirt: '#b5496b', pants: '#34495e', skin: '#d9a47a', hair: '#2b1a12', female: true }
 
   return (
     <group ref={group}>
-      <Humanoid look={look} partsRef={parts} />
+      <Character kind={gender} poseRef={pose} />
     </group>
   )
 }

@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useRef } from 'react'
 import { useFrame, useThree } from '@react-three/fiber'
-import { Html } from '@react-three/drei'
+import { Environment, Html, Lightformer } from '@react-three/drei'
 import { Color, DirectionalLight, Fog, HemisphereLight, MeshStandardMaterial } from 'three'
 import { KOS_WALL_H, KOS_WALLS, LAMPS, TREES, ZONES } from './data'
-import { Humanoid } from './Humanoid'
+import { Character } from './Character'
 import { useGame } from './store'
 
 interface BProps { x: number; y?: number; z: number; w: number; h: number; d: number; color: string; rx?: number; ry?: number }
@@ -52,9 +52,16 @@ function DayNight() {
     }
     if (hemi.current) hemi.current.intensity = 0.25 + 0.6 * k
     bulbMat.emissiveIntensity = (1 - k) * 2.5
+    scene.environmentIntensity = 0.04 + 0.3 * k
   })
   return (
     <>
+      <Environment resolution={256} frames={1}>
+        <Lightformer form="rect" intensity={2.2} position={[0, 6, -6]} scale={[14, 8, 1]} color="#fff4e0" />
+        <Lightformer form="rect" intensity={1.2} position={[-8, 3, 4]} rotation-y={Math.PI / 2} scale={[8, 4, 1]} color="#cfe4ff" />
+        <Lightformer form="rect" intensity={0.8} position={[8, 3, 4]} rotation-y={-Math.PI / 2} scale={[8, 4, 1]} color="#ffe9c7" />
+        <Lightformer form="rect" intensity={0.6} position={[0, -4, 0]} rotation-x={Math.PI / 2} scale={[20, 20, 1]} color="#7f9a63" />
+      </Environment>
       <hemisphereLight ref={hemi} args={['#cfe4ff', '#6b7a55', 0.8]} />
       <directionalLight
         ref={dir}
@@ -84,7 +91,7 @@ function Kos() {
       <pointLight position={[-18, 2.3, -14]} intensity={14} distance={10} color="#ffe2b0" />
       <Label pos={[-18, 4, -10]} text="Kos Pak Budi" />
       <group position={[-14, 0, -8.5]} rotation={[0, -Math.PI / 2, 0]}>
-        <Humanoid look={{ shirt: '#8b5a2b', pants: '#3b3b3b', skin: '#b98660', hair: '#cfcfcf' }} />
+        <Character kind="male" npc={{ beard: true, top: '#d8b98a', scale: 0.97 }} />
       </group>
       <Label pos={[-14, 2.4, -8.5]} text="Pak Budi" />
     </group>
