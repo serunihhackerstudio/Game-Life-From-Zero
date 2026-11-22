@@ -12,6 +12,7 @@ import { Traffic } from './Traffic'
 import { PathNpc, SceneBike, SeatedNpc } from './SceneActors'
 import { KORAN_CUSTOMER, NASGOR_CUSTOMERS, PASSENGER_ROUTE } from './scenes'
 import { playerPos, useGame, visMinute } from './store'
+import { QUALITY, useSettings } from './settings'
 
 const Label = ({ pos, text }: { pos: [number, number, number]; text: string }) => (
   <Html position={pos} center distanceFactor={16} style={{ pointerEvents: 'none' }}>
@@ -26,6 +27,7 @@ const tmp = new Color()
 function DayNight() {
   const dir = useRef<DirectionalLight>(null)
   const hemi = useRef<HemisphereLight>(null)
+  const q = QUALITY[useSettings((st) => st.quality)]
   const { scene } = useThree()
   useEffect(() => {
     scene.fog = new Fog('#8fc7ff', 45, 120)
@@ -50,8 +52,9 @@ function DayNight() {
       <hemisphereLight ref={hemi} args={['#cfe4ff', '#6b7a55', 0.8]} />
       <directionalLight
         ref={dir}
-        castShadow
-        shadow-mapSize={[2048, 2048]}
+        key={q.shadowMap + (q.shadows ? 'y' : 'n')}
+        castShadow={q.shadows}
+        shadow-mapSize={[q.shadowMap, q.shadowMap]}
         shadow-camera-left={-50} shadow-camera-right={50} shadow-camera-top={40} shadow-camera-bottom={-40}
         shadow-camera-near={1} shadow-camera-far={140}
         shadow-bias={-0.0004}
@@ -61,6 +64,7 @@ function DayNight() {
 }
 
 function Clouds() {
+  const on = QUALITY[useSettings((st) => st.quality)].clouds
   const tex = useMemo(() => cloudTex(), [])
   const refs = useRef<(Sprite | null)[]>([])
   const spec = useMemo(() => Array.from({ length: 8 }, (_, i) => ({ x: -90 + i * 26, y: 48 + (i % 3) * 9, z: -95 - (i % 2) * 20, s: 55 + (i % 4) * 12, v: 0.5 + (i % 3) * 0.25 })), [])
@@ -75,6 +79,7 @@ function Clouds() {
       m.color.setScalar(0.35 + 0.65 * k)
     })
   })
+  if (!on) return null
   return (
     <>
       {spec.map((c, i) => (
@@ -840,7 +845,7 @@ export function World() {
       <group position={[-10.5, 0, -6.2]} rotation={[0, 0.15, 0]}><Motorbike color="#2980b9" /></group>
       <group position={[7.5, 0, -6.3]} rotation={[0, Math.PI - 0.1, 0]}><Motorbike color="#c0392b" /></group>
       <Bin p={[-25, 0, -8.8]} c="#c0392b" />
-      <Traffic />
+      {QUALITY[useSettings.getState().quality].traffic && <Traffic />}
     </>
   )
 }

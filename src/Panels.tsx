@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { hourOf, jobLevel, rupiah, shopPrice, useGame, dayOf } from './store'
+import { audio } from './audio'
 import { affLabel, AFF_MAX, NPCS, type Ctx } from './npcs'
 import { JOB_ORDER, JOBS } from './jobs'
 import { INV_CAP, invCount, ITEMS, RECIPES, SHOPS, type ItemId } from './items'
@@ -159,7 +160,7 @@ function Dialog({ npcId, nodeId }: { npcId: keyof typeof NPCS; nodeId: string })
     let raf = 0
     const tick = () => {
       const k = Math.min(text.length, Math.floor((performance.now() - t0) / 16))
-      setN(k)
+      setN((prev) => { if (k > prev && k % 2 === 0 && text[k - 1] !== ' ') audio.blip(['budi', 'rina', 'sari', 'dimas'].indexOf(npcId)); return k })
       if (k < text.length) raf = requestAnimationFrame(tick)
     }
     raf = requestAnimationFrame(tick)

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useGame, type Gender } from './store'
+import { useSettings } from './settings'
 
 export function Menu() {
   const { newGame, continueGame, hasSave, refreshSave } = useGame()
@@ -25,6 +26,10 @@ export function Menu() {
         </div>
         <button className="primary" onClick={() => newGame(name, gender)}>Game Baru</button>
         <button disabled={!hasSave} onClick={() => void continueGame()}>Lanjutkan</button>
+        <div className="two">
+          <button onClick={() => useSettings.getState().setOpen(true)}>Pengaturan</button>
+          <button onClick={() => useSettings.getState().setCredits(true)}>Kredit</button>
+        </div>
         <p className="small">Kamu remaja sebatang kara di Kota Harapan dengan Rp100.000. Bekerja, makan, tidur, dan bayar kos tepat waktu.</p>
       </div>
     </div>

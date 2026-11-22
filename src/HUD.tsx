@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { clock, dayOf, hourOf, jobLevel, MEAL_PRICE, periodOf, RENT, rupiah, useGame, visMinute } from './store'
 import { ZONES } from './data'
 import { Panels } from './Panels'
+import { useSettings } from './settings'
 import { affLabel, NPCS } from './npcs'
 import { INV_CAP, invCount } from './items'
 
@@ -17,6 +18,7 @@ function Bar({ label, value, color }: { label: string; value: number; color: str
 
 export function HUD() {
   const s = useGame()
+  const showHelp = useSettings((st) => st.showHelp)
   const [, force] = useState(0)
   const scening = !!s.scene && isFinite(s.scene.dur)
   useEffect(() => { // jam berjalan cepat selama adegan
@@ -94,7 +96,7 @@ export function HUD() {
         {s.toasts.map((t) => <div key={t.id} className={'toast ' + t.kind}>{t.text}</div>)}
       </div>
 
-      <div className="help">WASD/panah: jalan · Shift: lari · Drag mouse / Q R: kamera · Scroll: zoom · E: interaksi · I: tas · Esc: jeda</div>
+      {showHelp && <div className="help">WASD/panah: jalan · Shift: lari · Drag mouse / Q R: kamera · Scroll: zoom · E: interaksi · I: tas · Esc: jeda</div>}
 
       <Panels />
 
@@ -111,6 +113,7 @@ export function HUD() {
           <div className="modal">
             <h2>Jeda</h2>
             <button onClick={s.togglePause}>Lanjut</button>
+            <button onClick={() => useSettings.getState().setOpen(true)}>Pengaturan</button>
             <button onClick={() => { s.saveNow(); }}>Simpan</button>
             <button onClick={s.toMenu}>Simpan & Menu Utama</button>
           </div>

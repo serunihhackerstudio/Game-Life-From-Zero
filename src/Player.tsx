@@ -4,6 +4,7 @@ import { Group, MathUtils, Vector3 } from 'three'
 import { Humanoid, IDLE_ACT, type Act, type Cond, type Look } from './Humanoid'
 import { sceneFrame } from './scenes'
 import { invCount } from './items'
+import { audio } from './audio'
 import { resolve, ZONES } from './data'
 import { playerPos, useGame } from './store'
 
@@ -13,6 +14,7 @@ const WALK = 3.4, RUN = 6.2
 export function Player() {
   const group = useRef<Group>(null)
   const speedRef = useRef(0)
+  const stepT = useRef(0)
   const actRef = useRef<Act>({ ...IDLE_ACT })
   const condRef = useRef<Cond>({ hunger: 100, energy: 100, health: 100, mood: 75, thirst: 100, hygiene: 100 })
   const camLook = useRef(new Vector3(playerPos.x, 1.3, playerPos.z))
@@ -112,8 +114,10 @@ export function Player() {
         let diff = target - playerPos.rot
         diff = Math.atan2(Math.sin(diff), Math.cos(diff))
         playerPos.rot += diff * Math.min(1, dt * 12)
+        stepT.current -= dt
+        if (stepT.current <= 0) { audio.step(running); stepT.current = running ? 0.27 : 0.42 }
         s.tick(dt, running)
-      } else s.tick(dt, false)
+      } else { stepT.current = 0; s.tick(dt, false) }
     }
 
     g.position.set(playerPos.x, 0, playerPos.z)

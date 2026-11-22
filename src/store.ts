@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import { START, type ZoneId } from './data'
 import { clearSave, loadSave, writeSave } from './save'
+import { audio } from './audio'
 import { JOBS, type JobDef, type JobId } from './jobs'
 import { AFF_MAX, lateFeeWaived, mealDiscount, NPCS, rentDiscount, shopDiscount, type Ctx, type NpcId } from './npcs'
 import { INV_CAP, invCount, ITEMS, RECIPES, SHOPS, type ItemId, type ShopId } from './items'
@@ -145,6 +146,7 @@ export const useGame = create<GameState>((set, get) => {
 
   const toast = (text: string, kind: Toast['kind'] = 'info') => {
     const id = ++toastId
+    audio.sfx(kind === 'good' ? 'good' : kind === 'bad' ? 'bad' : 'info')
     set((s) => ({ toasts: [...s.toasts.slice(-3), { id, text, kind }] }))
     setTimeout(() => set((s) => ({ toasts: s.toasts.filter((t) => t.id !== id) })), 4200)
   }
@@ -264,6 +266,7 @@ export const useGame = create<GameState>((set, get) => {
       if (s.money < price) return toast(`Uang tidak cukup (${rupiah(price)}).`, 'bad')
       if (invCount(s.inv) + stock.pack > INV_CAP) return toast(`Tas penuh (maks ${INV_CAP} barang).`, 'bad')
       set({ money: s.money - price, inv: { ...s.inv, [itemId]: (s.inv[itemId] ?? 0) + stock.pack }, scene: s.scene ? { ...s.scene, pulseAt: performance.now() } : s.scene })
+      audio.sfx('coin')
       toast(`Beli ${ITEMS[itemId].name}${stock.pack > 1 ? ' ×' + stock.pack : ''} · -${rupiah(price)}`, 'info')
       get().saveNow()
     },
