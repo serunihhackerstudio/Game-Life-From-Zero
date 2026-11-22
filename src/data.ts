@@ -43,6 +43,23 @@ export const COLLIDERS: Box[] = [
   { x: 28, z: -8.2, w: 1.2, d: 1.2 }, // peti
   { x: 29.3, z: -8.2, w: 1.2, d: 1.2 },
   { x: 4, z: 13.2, w: 2, d: 0.6 }, // bangku
+  { x: -7.2, z: -7.4, w: 1.9, d: 1.1 }, // gerobak es teh
+  { x: -10.5, z: -6.2, w: 1.8, d: 0.6 }, // motor parkir
+  { x: 7.5, z: -6.3, w: 1.8, d: 0.6 },
+  { x: -20.4, z: -9.3, w: 0.5, d: 0.5 }, // tanaman pot teras kos
+  { x: -15.6, z: -9.3, w: 0.5, d: 0.5 },
+  { x: -3.4, z: -9.3, w: 0.5, d: 0.5 }, // bangku plastik warung
+  { x: 3.4, z: -9.3, w: 0.5, d: 0.5 },
+  { x: 5.4, z: -8.8, w: 0.5, d: 0.5 }, // tong sampah
+  { x: -25, z: -8.8, w: 0.5, d: 0.5 },
+  { x: -26, z: -4.9, w: 0.4, d: 0.4 }, // tiang listrik
+  { x: 9, z: -4.9, w: 0.4, d: 0.4 },
+  { x: 33, z: -4.9, w: 0.4, d: 0.4 },
+  { x: 16.8, z: -8.2, w: 1.3, d: 1.3 }, // palet gudang
+  { x: 26.4, z: -8.4, w: 0.6, d: 0.6 }, // drum
+  { x: 33.5, z: -7.8, w: 5.2, d: 2.3 }, // truk
+  { x: -5, z: 11, w: 0.4, d: 0.4 }, // lampu taman
+  { x: 12, z: 11, w: 0.4, d: 0.4 },
   ...TREES.map(([x, z]) => ({ x, z, w: 0.8, d: 0.8 })),
   ...LAMPS.map(([x, z]) => ({ x, z, w: 0.4, d: 0.4 })),
 ]

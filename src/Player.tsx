@@ -18,6 +18,15 @@ export function Player() {
   const gender = useGame((s) => s.gender)
   const { gl } = useThree()
 
+  // hook debug (hanya aktif dengan ?debug) untuk uji visual
+  useEffect(() => {
+    if (!new URLSearchParams(location.search).has('debug')) return
+    ;(window as unknown as Record<string, unknown>).__lfz = {
+      tp: (x: number, z: number, y = 0, d = 8) => { playerPos.x = x; playerPos.z = z; yaw.current = y; dist.current = d },
+      set: (p: Record<string, unknown>) => useGame.setState(p),
+    }
+  }, [])
+
   useEffect(() => {
     const down = (e: KeyboardEvent) => {
       if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Space'].includes(e.code)) e.preventDefault()
