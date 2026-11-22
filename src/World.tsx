@@ -10,7 +10,7 @@ import { Ball, Barrel, Bin, Bulb, Bx, Cart, Cyl, Flowers, Motorbike, Pallet, Pla
 import { asphalt, cloudTex, facade, facadeEmissive, grass, hazard, metal, pavement, plaster, roofTile, rollerDoor, stripes, tiled, wood } from './textures'
 import { Traffic } from './Traffic'
 import { PathNpc, SceneBike, SeatedNpc } from './SceneActors'
-import { JAGA_ROUTE, KORAN_CUSTOMER, NASGOR_CUSTOMERS, PASSENGER_ROUTE, routeAt, routeDuration } from './scenes'
+import { KORAN_CUSTOMER, NASGOR_CUSTOMERS, PASSENGER_ROUTE } from './scenes'
 import { playerPos, useGame, visMinute } from './store'
 
 const Label = ({ pos, text }: { pos: [number, number, number]; text: string }) => (
@@ -494,19 +494,6 @@ function ShowerFx() {
   )
 }
 
-/** Cahaya senter satpam: mengikuti titik patroli. */
-function PatrolLight() {
-  const l = useRef<PointLight>(null)
-  useFrame(() => {
-    const sc = useGame.getState().scene
-    if (!sc || !l.current) return
-    const t = (performance.now() - sc.t0) / 1000
-    const r = routeAt(JAGA_ROUTE, 1.2, t % routeDuration(JAGA_ROUTE, 1.2))
-    l.current.position.set(r.x + Math.sin(r.rot) * 1.6, 1.3, r.z + Math.cos(r.rot) * 1.6)
-  })
-  return <pointLight ref={l} intensity={10} distance={7} decay={2} color="#fff2b8" />
-}
-
 /** Properti yang muncul hanya saat adegan: piring makan, uap masakan, selimut tidur. */
 function SceneProps() {
   const kind = useGame((s) => s.scene?.kind)
@@ -545,11 +532,6 @@ function SceneProps() {
     <group>
       <SceneBike kind="ojek" />
       <PathNpc route={PASSENGER_ROUTE} speed={1.5} delay={5.6} look={{ shirt: '#c0392b', pants: '#34495e', skin: '#c68e64', hair: '#222', backpack: true }} />
-    </group>
-  )
-  if (kind === 'jaga') return (
-    <group>
-      <PatrolLight />
     </group>
   )
   if (kind === 'koran') return <PathNpc route={KORAN_CUSTOMER} speed={1.5} delay={0.8} look={{ shirt: '#8e44ad', pants: '#34495e', skin: '#c68e64', hair: '#222' }} />
@@ -696,24 +678,6 @@ function Npc({ id }: { id: NpcId }) {
         <Humanoid look={def.look} actRef={act} />
       </group>
       {!talking && <Label pos={[0, 2.25, 0]} text={def.name} />}
-    </group>
-  )
-}
-
-/** Pos satpam kecil dengan jendela, lampu, dan papan nama. */
-function PosSatpam() {
-  const wall = useMemo(() => plaster('#d9d2b8'), [])
-  const tin = useMemo(() => metal('#7e8b98'), [])
-  return (
-    <group>
-      <TBox x={12.0} z={-6.5} w={1.8} h={2.3} d={1.4} tex={wall} mpt={1.6} />
-      <TBox x={12.0} y={2.3} z={-6.5} w={2.2} h={0.1} d={1.8} tex={tin} mpt={1.2} metal={0.4} rough={0.6} />
-      <Window p={[12.0, 1.5, -5.78]} w={1.1} h={0.7} frame="#1f3a5f" />
-      <Bx x={12.0} y={0} z={-5.77} w={1.8} h={0.45} d={0.04} c="#1f3a5f" />
-      <Sign text="POS SATPAM" w={1.5} h={0.34} p={[12.0, 2.05, -5.77]} bg="#1f3a5f" fg="#fff" glow={0.7} />
-      <Bulb p={[12.0, 2.15, -5.5]} r={0.08} s={3} />
-      <Bx x={11.1} y={0} z={-5.4} w={0.6} h={0.45} d={0.4} c="#8a5a35" />
-      <pointLight position={[12.0, 2.0, -5.3]} intensity={5} distance={6} color="#ffe2b0" />
     </group>
   )
 }
@@ -869,7 +833,7 @@ export function World() {
         <Lightformer form="rect" intensity={0.8} position={[8, 3, 4]} rotation-y={-Math.PI / 2} scale={[8, 4, 1]} color="#ffe9c7" />
       </Environment>
       <Street />
-      <Kos /><Warung /><JobCenter /><KoranStand /><Ekspedisi /><PosSatpam /><KamarMandi /><NasgorCart /><OjekStand /><ParkirProps /><Kelontong /><Pasar /><Gudang /><Taman /><Trees /><Lamps /><LampLights /><Utilities /><Backdrop /><Markers />
+      <Kos /><Warung /><JobCenter /><KoranStand /><Ekspedisi /><KamarMandi /><NasgorCart /><OjekStand /><ParkirProps /><Kelontong /><Pasar /><Gudang /><Taman /><Trees /><Lamps /><LampLights /><Utilities /><Backdrop /><Markers />
       <Cart p={[-7.2, 0, -7.4]} ry={0.1} />
       {(Object.keys(NPCS) as NpcId[]).map((id) => <Npc key={id} id={id} />)}
       <SceneProps />

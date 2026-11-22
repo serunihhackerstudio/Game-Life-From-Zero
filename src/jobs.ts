@@ -1,7 +1,7 @@
 import type { SceneKind } from './store'
 
 // Delapan pekerjaan (GDD bagian 7.2): lima siang hari dan tiga shift malam.
-export type JobId = 'koran' | 'parkir' | 'pelayan' | 'kurir' | 'gudang' | 'nasgor' | 'ojek' | 'satpam'
+export type JobId = 'koran' | 'parkir' | 'pelayan' | 'kurir' | 'gudang' | 'nasgor' | 'ojek'
 
 export interface JobDef {
   id: JobId; name: string; icon: string; where: string; desc: string
@@ -45,9 +45,5 @@ export const JOBS: Record<JobId, JobDef> = {
     id: 'ojek', name: 'Driver ojek', icon: '🏍️', where: 'Pangkalan ojek (selatan jalan)', desc: 'Mengantar penumpang dengan motor sampai malam. Ongkos besar, tetapi capek di jalan.',
     wage: 60000, start: [18, 22], hours: 5, energyPerHour: 6, req: 4, night: true, scene: 'ojek', label: 'Mengantar penumpang… (5 jam)', sceneMs: 8500,
   },
-  satpam: {
-    id: 'satpam', name: 'Satpam malam', icon: '🔦', where: 'Pos satpam (dekat kelontong)', desc: 'Berpatroli menjaga toko dan gudang sepanjang malam. Upah paling besar, tetapi harus begadang.',
-    wage: 70000, start: [19, 22], hours: 7, energyPerHour: 4, req: 6, night: true, scene: 'jaga', label: 'Berpatroli malam… (7 jam)', sceneMs: 9000,
-  },
 }
-export const JOB_ORDER: JobId[] = ['koran', 'parkir', 'pelayan', 'kurir', 'gudang', 'nasgor', 'ojek', 'satpam']
+export const JOB_ORDER: JobId[] = ['koran', 'parkir', 'pelayan', 'kurir', 'gudang', 'nasgor', 'ojek']

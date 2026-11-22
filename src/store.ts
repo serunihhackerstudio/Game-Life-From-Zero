@@ -42,7 +42,7 @@ export function visMinute(): number {
 /** Posisi pemain: dimutasi tiap frame, tidak masuk React state. */
 export const playerPos = { x: START.x, z: START.z, rot: START.rot }
 
-export type SceneKind = 'talk' | 'work' | 'koran' | 'parkir' | 'pelayan' | 'kurir' | 'nasgor' | 'ojek' | 'jaga' | 'drink' | 'mandi' | 'eat' | 'shop' | 'cook' | 'sleep' | 'rest'
+export type SceneKind = 'talk' | 'work' | 'koran' | 'parkir' | 'pelayan' | 'kurir' | 'nasgor' | 'ojek' | 'drink' | 'mandi' | 'eat' | 'shop' | 'cook' | 'sleep' | 'rest'
 export interface SceneInfo { kind: SceneKind; label: string; t0: number; dur: number; fromMin: number; toMin: number; shop?: ShopId; npc?: NpcId; pulseAt: number }
 export type Ui = null | { kind: 'shop'; shop: ShopId } | { kind: 'cook' } | { kind: 'inv' } | { kind: 'jobs' } | { kind: 'talk'; npc: NpcId; node: string }
 interface Goals { day: number; worked: boolean; ate: boolean; slept: boolean; bathed?: boolean }
@@ -237,7 +237,7 @@ export const useGame = create<GameState>((set, get) => {
       playerPos.x = sv.px; playerPos.z = sv.pz; playerPos.rot = sv.prot
       acc = 0; runAcc = 0
       const { v: _v, px: _px, pz: _pz, prot: _prot, ...data } = sv
-      set({ ...data, thirst: data.thirst ?? 100, hygiene: data.hygiene ?? 100, inv: data.inv ?? {}, hired: data.hired ?? ['gudang'], jobShifts: data.jobShifts ?? { gudang: data.shifts ?? 0 }, jobDay: data.jobDay ?? {}, affinity: data.affinity ?? {}, talkDay: data.talkDay ?? {}, screen: 'playing', paused: false, ui: null, scene: null, busy: null, nearby: null, toasts: [] })
+      set({ ...data, thirst: data.thirst ?? 100, hygiene: data.hygiene ?? 100, inv: data.inv ?? {}, hired: (data.hired ?? ['gudang']).filter((h: string) => h !== 'satpam'), jobShifts: data.jobShifts ?? { gudang: data.shifts ?? 0 }, jobDay: data.jobDay ?? {}, affinity: data.affinity ?? {}, talkDay: data.talkDay ?? {}, screen: 'playing', paused: false, ui: null, scene: null, busy: null, nearby: null, toasts: [] })
       toast('Permainan dilanjutkan.', 'info')
     },
 
@@ -403,7 +403,6 @@ export const useGame = create<GameState>((set, get) => {
         case 'kurir':
         case 'nasgor':
         case 'ojek':
-        case 'satpam':
           return workJob(JOBS[s.nearby as JobId])
         case 'jobcenter':
           return get().openTalk('dimas')

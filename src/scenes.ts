@@ -64,8 +64,7 @@ export function bikeAt(kind: 'parkir' | 'kurir' | 'ojek', t: number) {
   const q = polyAt(path, easeOut(t / dur))
   return { x: q.x, z: q.z, rotY: -Math.atan2(q.dz, q.dx) }
 }
-// Satpam: rute patroli di depan gudang & toko; penumpang ojek; pembeli nasi goreng
-export const JAGA_ROUTE: Route = [[14.5, -7.0, 1.2], [26.5, -7.0, 1.6], [26.5, -5.7, 0.4], [14.5, -5.7, 1.4], [14.5, -7.0, 0]]
+// Penumpang ojek; pembeli nasi goreng
 export const PASSENGER_ROUTE: Route = [[22.4, 2.8, 0.5], [23.6, -3.5, 0]]
 export const NASGOR_CUSTOMERS: Route = [[-27.4, -3.6, 0], [-25.6, -4.9, 3.4], [-27.4, -3.6, 0]]
 // Pelayan: rute bolak-balik di depan bangku, berhenti di tiap pelanggan
@@ -126,13 +125,6 @@ export function sceneFrame(sc: SceneInfo, t: number, bagCount: number): Frame {
         f.x = 20.3; f.z = 2.5; f.rotY = -PI / 2 + 0.2; f.pose = 'stand'
         f.cam = [17.6, 1.7, 5.4]; f.look = [21.2, 1.2, 2.8]
       }
-      break
-    }
-    case 'jaga': {
-      const dur = routeDuration(JAGA_ROUTE, 1.2)
-      const r = routeAt(JAGA_ROUTE, 1.2, t % dur)
-      f.x = r.x; f.z = r.z; f.rotY = r.end ? PI : r.rot; f.pose = 'patrol'; f.hold = 'torch'; f.speed = r.moving ? 1.8 : 0
-      f.cam = [f.x - 3.6 + Math.sin(t * 0.3) * 0.6, 1.7, f.z + 4.6]; f.look = [f.x + 1.6, 1.1, f.z - 0.2]
       break
     }
     case 'koran':
