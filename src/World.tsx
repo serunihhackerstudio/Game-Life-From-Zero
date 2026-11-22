@@ -5,7 +5,7 @@ import { Color, DirectionalLight, Fog, HemisphereLight, MeshStandardMaterial, Po
 import { KOS_WALL_H, KOS_WALLS, LAMPS, TREES, ZONES } from './data'
 import { daylight, registerGlow, updateGlow } from './glow'
 import { Humanoid } from './Humanoid'
-import { Barrel, Bin, Bulb, Bx, Cart, Cyl, Flowers, Motorbike, Pallet, Plant, Pole, Sign, Stool, TBox, Tree, Truck, Window, Wire } from './props'
+import { Ball, Barrel, Bin, Bulb, Bx, Cart, Cyl, Flowers, Motorbike, Pallet, Plant, Pole, Sign, Stool, TBox, Tree, Truck, Window, Wire } from './props'
 import { asphalt, cloudTex, facade, facadeEmissive, grass, hazard, metal, pavement, plaster, roofTile, rollerDoor, stripes, tiled, wood } from './textures'
 import { Traffic } from './Traffic'
 import { useGame } from './store'
@@ -133,6 +133,13 @@ function Kos() {
       <mesh position={[-14, 1.1, -16.85]} rotation={[Math.PI / 2, 0, 0]}><torusGeometry args={[0.14, 0.012, 6, 24]} /><meshStandardMaterial color="#aaa" /></mesh>
       <Bx x={-18} y={0.1} z={-17.6} w={1.6} h={2.0} d={0.6} c="#7a5230" />
       <Bx x={-18.4} y={0.1} z={-17.29} w={0.02} h={1.9} d={0.02} c="#3a2614" />
+      {/* dapur kecil: meja kompor */}
+      <Bx x={-16.25} y={0.1} z={-17.75} w={1.1} h={0.85} d={0.5} c="#d8d4c8" rough={0.6} />
+      <Bx x={-16.25} y={0.95} z={-17.75} w={1.14} h={0.04} d={0.54} c="#9aa0a6" metal={0.6} rough={0.35} />
+      {[-0.22, 0.22].map((dx) => <Cyl key={dx} p={[-16.25 + dx, 1.0, -17.75]} r={0.12} h={0.03} c="#1a1a1a" metal={0.5} />)}
+      <Cyl p={[-16.47, 1.12, -17.75]} r={0.12} h={0.2} c="#c8ccd2" metal={0.7} rough={0.3} />
+      <Cyl p={[-16.47, 1.23, -17.75]} r={0.125} h={0.03} c="#9aa0a6" metal={0.7} />
+      <Bx x={-16.25} y={1.7} z={-17.9} w={1.0} h={0.45} d={0.28} c="#8a5a35" />
       <Window p={[-15.2, 1.5, -17.78]} w={1.1} h={0.9} />
       <Window p={[-22.78, 1.5, -13.2]} ry={Math.PI / 2} w={1.1} h={0.9} />
       <Sign text="START FROM ZERO" w={0.9} h={1.15} p={[-21.2, 1.75, -17.78]} bg="#1f5e8c" fg="#ffffff" glow={0.2} />
@@ -145,6 +152,89 @@ function Kos() {
         <Humanoid look={{ shirt: '#cdbf9a', pants: '#2d2d2d', skin: '#b98660', hair: '#c9c9c9', elder: true, sandals: true }} />
       </group>
       <Label pos={[-14, 2.4, -8.5]} text="Pak Budi" />
+    </group>
+  )
+}
+
+
+/** Mini Mart: toko modern berkaca, awning biru, rak berisi produk, ATM di samping. */
+function Minimarket() {
+  const wall = useMemo(() => plaster('#eef1f4'), [])
+  const glass = useMemo(() => registerGlow(new MeshStandardMaterial({ color: '#a9d2ea', roughness: 0.1, metalness: 0.2, transparent: true, opacity: 0.45, emissive: '#fff0c8', emissiveIntensity: 0 }), 1.0), [])
+  const prod = ['#e74c3c', '#f1c40f', '#27ae60', '#3498db', '#e67e22', '#9b59b6']
+  return (
+    <group>
+      <TBox x={9.6} z={-13} w={6.8} h={3.6} d={5} tex={wall} mpt={2.4} />
+      <Bx x={9.6} y={3.6} z={-13} w={7.1} h={0.35} d={5.3} c="#1f5e8c" />
+      {/* isi toko terlihat dari kaca: rak + produk + lantai terang */}
+      <Bx x={9.6} y={0.05} z={-10.95} w={5} h={0.03} d={1.6} c="#e8e4da" />
+      {[8.1, 9.6, 11.1].map((x, i) => (
+        <group key={x}>
+          <Bx x={x} y={0.1} z={-11.3} w={1.1} h={1.5} d={0.4} c="#cfd6dc" metal={0.3} />
+          {[0.45, 0.85, 1.25].map((y, j) => (
+            <group key={y}>
+              {[-0.35, 0, 0.35].map((dx, k) => <Bx key={dx} x={x + dx} y={y} z={-11.1} w={0.28} h={0.3} d={0.2} c={prod[(i * 3 + j + k) % 6]} />)}
+            </group>
+          ))}
+        </group>
+      ))}
+      {/* kaca depan + rangka + pintu */}
+      <mesh position={[9.6, 1.35, -10.47]} material={glass}><planeGeometry args={[4.8, 2.3]} /></mesh>
+      <Bx x={9.6} y={2.5} z={-10.5} w={5} h={0.12} d={0.14} c="#1f5e8c" />
+      <Bx x={9.6} y={0.2} z={-10.5} w={5} h={0.12} d={0.14} c="#1f5e8c" />
+      {[7.2, 8.4, 9.6, 10.8, 12.0].map((x) => <Bx key={x} x={x} y={0.2} z={-10.5} w={0.07} h={2.4} d={0.1} c="#1f5e8c" />)}
+      {/* awning biru */}
+      <Bx x={9.6} y={2.2} z={-9.85} w={6.4} h={0.08} d={1.5} c="#1f5e8c" rx={0.2} mid />
+      <Sign text="MINI MART HARAPAN" sub="Buka 06.00–22.00" w={4.6} h={0.85} p={[9.6, 3.05, -10.48]} bg="#1f5e8c" fg="#ffffff" />
+      <Bulb p={[6.5, 2.0, -9.4]} r={0.09} />
+      <Bulb p={[12.7, 2.0, -9.4]} r={0.09} />
+      <pointLight position={[9.6, 2.0, -11.5]} intensity={8} distance={7} color="#fff0d0" />
+      {/* ATM */}
+      <group position={[14.0, 0, -10.2]}>
+        <Bx x={0} z={0} w={0.9} h={2.0} d={0.8} c="#2c3e50" metal={0.3} />
+        <Bx x={0} y={1.3} z={0.41} w={0.6} h={0.4} d={0.03} c="#8fd3f4" rough={0.2} />
+        <Bx x={0} y={1.0} z={0.41} w={0.5} h={0.12} d={0.03} c="#c0392b" />
+        <Sign text="ATM" w={0.7} h={0.25} p={[0, 1.85, 0.42]} bg="#1f5e8c" fg="#fff" glow={0.5} />
+      </group>
+    </group>
+  )
+}
+
+/** Pasar tradisional: lapak berterpal belang dengan sayur, telur, dan karung beras. */
+function Pasar() {
+  const walk = useMemo(() => pavement(), [])
+  const woodT = useMemo(() => wood('#8a5a35'), [])
+  const t1 = useMemo(() => stripes('#27ae60', '#f4efe6'), [])
+  const t2 = useMemo(() => stripes('#2c6fb5', '#f4efe6'), [])
+  const t3 = useMemo(() => stripes('#e67e22', '#f4efe6'), [])
+  const stalls: { x: number; tex: typeof t1 }[] = [{ x: 18, tex: t1 }, { x: 22.5, tex: t2 }, { x: 27, tex: t3 }]
+  const veg = ['#2f9e44', '#c0392b', '#e67e22', '#7cb342', '#8e44ad']
+  return (
+    <group>
+      <TBox x={23} z={9.6} w={17} h={0.06} d={8.2} tex={walk} mpt={1.5} shadow={false} />
+      {/* gapura */}
+      <Bx x={14.9} z={5.9} w={0.14} h={3.4} d={0.14} c="#5b3a22" />
+      <Bx x={18.1} z={5.9} w={0.14} h={3.4} d={0.14} c="#5b3a22" />
+      <Sign text="PASAR HARAPAN" sub="Buka 05.00–14.00" w={3.4} h={0.95} p={[16.5, 3.0, 5.9]} ry={Math.PI} bg="#2e7d4f" fg="#fff" />
+      {stalls.map(({ x, tex }, i) => (
+        <group key={x}>
+          <TBox x={x} z={11.2} w={3} h={0.95} d={1.1} tex={woodT} mpt={1} />
+          {[-1.4, 1.4].map((dx) => [-0.5, 0.5].map((dz) => <Bx key={dx + ':' + dz} x={x + dx} z={11.2 + dz} w={0.07} h={2.5} d={0.07} c="#4a3322" />))}
+          <TBox x={x} y={2.55} z={11.2} w={3.4} h={0.06} d={1.8} tex={tex} mpt={0.8} rx={0.2} mid />
+          {/* dagangan */}
+          {i === 0 && Array.from({ length: 10 }, (_, k) => <Ball key={k} p={[x - 1.2 + (k % 5) * 0.55, 1.1, 11.0 + (k < 5 ? 0 : 0.35)]} r={0.2} c={veg[k % 5]} />)}
+          {i === 1 && (
+            <>
+              {[-1.0, -0.3].map((dx) => <Bx key={dx} x={x + dx} y={0.95} z={11.1} w={0.6} h={0.12} d={0.4} c="#c9b99a" />)}
+              {[-1.0, -0.3].map((dx) => Array.from({ length: 6 }, (_, k) => <Ball key={dx + ':' + k} p={[x + dx - 0.2 + (k % 3) * 0.2, 1.1, 10.98 + Math.floor(k / 3) * 0.2]} r={0.07} c="#f1e4c8" s={[0.8, 1, 0.8]} seg={8} />))}
+              {[0.5, 1.15].map((dx) => <mesh key={dx} position={[x + dx, 1.2, 11.1]} castShadow><capsuleGeometry args={[0.3, 0.45, 5, 10]} /><meshStandardMaterial color="#d9c9a3" roughness={1} /></mesh>)}
+            </>
+          )}
+          {i === 2 && Array.from({ length: 12 }, (_, k) => <Ball key={k} p={[x - 1.2 + (k % 6) * 0.45, 1.08, 11.0 + (k < 6 ? 0 : 0.32)]} r={0.17} c={['#f1c40f', '#e74c3c', '#e67e22', '#27ae60'][k % 4]} />)}
+          <Bulb p={[x, 2.25, 11.7]} r={0.08} />
+        </group>
+      ))}
+      <Bin p={[31.2, 0, 7]} />
     </group>
   )
 }
@@ -382,7 +472,7 @@ export function World() {
         <Lightformer form="rect" intensity={0.8} position={[8, 3, 4]} rotation-y={-Math.PI / 2} scale={[8, 4, 1]} color="#ffe9c7" />
       </Environment>
       <Street />
-      <Kos /><Warung /><Gudang /><Taman /><Trees /><Lamps /><LampLights /><Utilities /><Backdrop /><Markers />
+      <Kos /><Warung /><Minimarket /><Pasar /><Gudang /><Taman /><Trees /><Lamps /><LampLights /><Utilities /><Backdrop /><Markers />
       <Cart p={[-7.2, 0, -7.4]} ry={0.1} />
       <group position={[-10.5, 0, -6.2]} rotation={[0, 0.15, 0]}><Motorbike color="#2980b9" /></group>
       <group position={[7.5, 0, -6.3]} rotation={[0, Math.PI - 0.1, 0]}><Motorbike color="#c0392b" /></group>

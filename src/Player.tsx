@@ -56,7 +56,7 @@ export function Player() {
     if (!g) return
     const dt = Math.min(delta, 0.05)
     const s = useGame.getState()
-    const frozen = s.paused || !!s.busy || !!s.gameOver
+    const frozen = s.paused || !!s.ui || !!s.busy || !!s.gameOver
     const k = keys.current
 
     if (k.KeyQ) yaw.current += 1.8 * dt

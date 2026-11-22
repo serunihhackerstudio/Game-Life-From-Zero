@@ -1,5 +1,5 @@
 // Data statis dunia "Kota Harapan": zona interaksi, collider, batas peta.
-export type ZoneId = 'bed' | 'pakbudi' | 'warung' | 'gudang' | 'taman'
+export type ZoneId = 'bed' | 'pakbudi' | 'warung' | 'gudang' | 'taman' | 'minimarket' | 'pasar' | 'masak'
 
 export interface Zone { id: ZoneId; x: number; z: number; r: number; label: string }
 export interface Box { x: number; z: number; w: number; d: number } // pusat + ukuran
@@ -13,6 +13,9 @@ export const ZONES: Zone[] = [
   { id: 'warung', x: 0, z: -9, r: 2.2, label: 'Makan di Warung' },
   { id: 'gudang', x: 22, z: -8, r: 2.6, label: 'Kerja shift di Gudang Logistik' },
   { id: 'taman', x: 4, z: 12, r: 2.3, label: 'Istirahat di bangku taman' },
+  { id: 'minimarket', x: 9.6, z: -9, r: 2.2, label: 'Belanja di Mini Mart' },
+  { id: 'pasar', x: 22.5, z: 8.4, r: 2.4, label: 'Belanja di Pasar' },
+  { id: 'masak', x: -16.25, z: -16.3, r: 1.6, label: 'Memasak (kompor)' },
 ]
 
 export const TREES: [number, number][] = [
@@ -58,6 +61,12 @@ export const COLLIDERS: Box[] = [
   { x: 16.8, z: -8.2, w: 1.3, d: 1.3 }, // palet gudang
   { x: 26.4, z: -8.4, w: 0.6, d: 0.6 }, // drum
   { x: 33.5, z: -7.8, w: 5.2, d: 2.3 }, // truk
+  { x: 9.6, z: -13, w: 6.8, d: 5 }, // minimarket
+  { x: 14.0, z: -10.2, w: 0.9, d: 0.8 }, // ATM
+  { x: -16.25, z: -17.75, w: 1.1, d: 0.5 }, // kompor kos
+  { x: 18, z: 11.2, w: 3, d: 1.1 }, // lapak pasar
+  { x: 22.5, z: 11.2, w: 3, d: 1.1 },
+  { x: 27, z: 11.2, w: 3, d: 1.1 },
   { x: -5, z: 11, w: 0.4, d: 0.4 }, // lampu taman
   { x: 12, z: 11, w: 0.4, d: 0.4 },
   ...TREES.map(([x, z]) => ({ x, z, w: 0.8, d: 0.8 })),

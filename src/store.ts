@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import { START, type ZoneId } from './data'
 import { clearSave, loadSave, writeSave } from './save'
+import { INV_CAP, invCount, ITEMS, RECIPES, SHOPS, type ItemId, type ShopId } from './items'
 
 export type Gender = 'male' | 'female'
 export const TIME_SCALE = 2 // 1 detik nyata = 2 menit game
@@ -27,6 +28,7 @@ export const jobLevel = (shifts: number) =>
 /** Posisi pemain: dimutasi tiap frame, tidak masuk React state. */
 export const playerPos = { x: START.x, z: START.z, rot: START.rot }
 
+export type Ui = null | { kind: 'shop'; shop: ShopId } | { kind: 'cook' } | { kind: 'inv' }
 interface Goals { day: number; worked: boolean; ate: boolean; slept: boolean }
 interface Toast { id: number; text: string; kind: 'info' | 'good' | 'bad' }
 type Note = { text: string; kind: Toast['kind'] }
@@ -34,13 +36,14 @@ type Note = { text: string; kind: Toast['kind'] }
 interface Data {
   name: string; gender: Gender
   money: number; health: number; energy: number; hunger: number; mood: number
-  minute: number; rentDueDay: number; shifts: number; goals: Goals
+  minute: number; rentDueDay: number; shifts: number; goals: Goals; inv: Record<string, number>
   gameOver: string | null
 }
 
 interface GameState extends Data {
   screen: 'menu' | 'playing'
   paused: boolean
+  ui: Ui
   busy: string | null
   nearby: ZoneId | null
   toasts: Toast[]
@@ -50,6 +53,11 @@ interface GameState extends Data {
   toMenu: () => void
   refreshSave: () => Promise<void>
   togglePause: () => void
+  openUi: (u: Ui) => void
+  closeUi: () => void
+  buy: (shop: ShopId, item: ItemId) => void
+  cook: (recipeId: string) => void
+  eat: (item: ItemId) => void
   tick: (dt: number, running: boolean) => void
   interact: () => void
   saveNow: () => void
@@ -97,6 +105,7 @@ const DEFAULT: Data = {
   money: 100000, health: 100, energy: 100, hunger: 100, mood: 75,
   minute: 7 * 60, rentDueDay: 8, shifts: 0,
   goals: { day: 1, worked: false, ate: false, slept: false },
+  inv: {},
   gameOver: null,
 }
 
@@ -113,7 +122,7 @@ export const useGame = create<GameState>((set, get) => {
   const dataOf = (s: GameState): Data => ({
     name: s.name, gender: s.gender, money: s.money, health: s.health, energy: s.energy,
     hunger: s.hunger, mood: s.mood, minute: s.minute, rentDueDay: s.rentDueDay,
-    shifts: s.shifts, goals: s.goals, gameOver: s.gameOver,
+    shifts: s.shifts, goals: s.goals, inv: s.inv, gameOver: s.gameOver,
   })
   const commit = (d: Data, notes: Note[], busy?: string) => {
     set({ ...d, ...(busy ? { busy } : {}) })
@@ -125,14 +134,14 @@ export const useGame = create<GameState>((set, get) => {
 
   return {
     ...DEFAULT,
-    screen: 'menu', paused: false, busy: null, nearby: null, toasts: [], hasSave: false,
+    screen: 'menu', paused: false, ui: null, busy: null, nearby: null, toasts: [], hasSave: false,
 
     refreshSave: async () => set({ hasSave: !!(await loadSave()) }),
 
     newGame: (name, gender) => {
       Object.assign(playerPos, START)
       acc = 0; runAcc = 0
-      set({ ...DEFAULT, name: name.trim().slice(0, 16) || 'Andi', gender, screen: 'playing', paused: false, busy: null, nearby: null, toasts: [] })
+      set({ ...DEFAULT, name: name.trim().slice(0, 16) || 'Andi', gender, screen: 'playing', paused: false, ui: null, busy: null, nearby: null, toasts: [] })
       toast('Selamat datang di Kota Harapan! Kamu punya Rp100.000. Cari kerja dan bayar kos tiap 7 hari.', 'info')
       get().saveNow()
     },
@@ -143,17 +152,63 @@ export const useGame = create<GameState>((set, get) => {
       playerPos.x = sv.px; playerPos.z = sv.pz; playerPos.rot = sv.prot
       acc = 0; runAcc = 0
       const { v: _v, px: _px, pz: _pz, prot: _prot, ...data } = sv
-      set({ ...data, screen: 'playing', paused: false, busy: null, nearby: null, toasts: [] })
+      set({ ...data, inv: data.inv ?? {}, screen: 'playing', paused: false, ui: null, busy: null, nearby: null, toasts: [] })
       toast('Permainan dilanjutkan.', 'info')
     },
 
     toMenu: () => {
       get().saveNow()
-      set({ screen: 'menu', paused: false })
+      set({ screen: 'menu', paused: false, ui: null })
       void get().refreshSave()
     },
 
-    togglePause: () => { if (get().screen === 'playing' && !get().gameOver) set((s) => ({ paused: !s.paused })) },
+    togglePause: () => { if (get().screen === 'playing' && !get().gameOver && !get().ui) set((s) => ({ paused: !s.paused })) },
+
+    openUi: (u) => { const s = get(); if (s.screen === 'playing' && !s.paused && !s.busy && !s.gameOver) set({ ui: u }) },
+    closeUi: () => set({ ui: null }),
+
+    buy: (shopId, itemId) => {
+      const s = get(), shop = SHOPS[shopId], stock = shop.stock.find((x) => x.id === itemId)
+      if (!stock || s.gameOver) return
+      const h = hourOf(s.minute)
+      if (h < shop.open[0] || h >= shop.open[1]) return toast(`${shop.name} sudah tutup (buka ${shop.hours}).`, 'bad')
+      if (s.money < stock.price) return toast(`Uang tidak cukup (${rupiah(stock.price)}).`, 'bad')
+      if (invCount(s.inv) + stock.pack > INV_CAP) return toast(`Tas penuh (maks ${INV_CAP} barang).`, 'bad')
+      set({ money: s.money - stock.price, inv: { ...s.inv, [itemId]: (s.inv[itemId] ?? 0) + stock.pack } })
+      toast(`Beli ${ITEMS[itemId].name}${stock.pack > 1 ? ' ×' + stock.pack : ''} · -${rupiah(stock.price)}`, 'info')
+      get().saveNow()
+    },
+
+    cook: (recipeId) => {
+      const s = get(), r = RECIPES.find((x) => x.id === recipeId)
+      if (!r || s.busy || s.gameOver) return
+      for (const [id, n] of Object.entries(r.needs)) if ((s.inv[id] ?? 0) < (n ?? 0)) return toast('Bahan belum lengkap.', 'bad')
+      if (s.hunger >= 95) return toast('Kamu masih kenyang.', 'info')
+      const notes: Note[] = []
+      const d = simulate(dataOf(s), r.mins, 'awake', notes)
+      const inv = { ...d.inv }
+      for (const [id, n] of Object.entries(r.needs)) { inv[id] = (inv[id] ?? 0) - (n ?? 0); if (inv[id] <= 0) delete inv[id] }
+      d.inv = inv
+      d.hunger = clamp(d.hunger + r.hunger); d.mood = clamp(d.mood + r.mood); d.health = clamp(d.health + (r.health ?? 0))
+      d.goals = { ...d.goals, ate: true }
+      notes.push({ text: `Kamu memasak ${r.name}. Lapar +${r.hunger}.`, kind: 'good' })
+      set({ ui: null })
+      commit(d, notes, 'Memasak…')
+    },
+
+    eat: (itemId) => {
+      const s = get(), def = ITEMS[itemId]
+      if (!def.eat || (s.inv[itemId] ?? 0) < 1 || s.busy || s.gameOver) return
+      if (s.hunger >= 95) return toast('Kamu masih kenyang.', 'info')
+      const notes: Note[] = []
+      const d = simulate(dataOf(s), 5, 'awake', notes)
+      const inv = { ...d.inv }; inv[itemId] -= 1; if (inv[itemId] <= 0) delete inv[itemId]
+      d.inv = inv
+      d.hunger = clamp(d.hunger + def.eat.hunger); d.mood = clamp(d.mood + def.eat.mood)
+      d.goals = { ...d.goals, ate: true }
+      notes.push({ text: `Makan ${def.name}. Lapar +${def.eat.hunger}.`, kind: 'info' })
+      commit(d, notes)
+    },
 
     saveNow: () => {
       const s = get()
@@ -163,7 +218,7 @@ export const useGame = create<GameState>((set, get) => {
 
     tick: (dt, running) => {
       const s = get()
-      if (s.screen !== 'playing' || s.paused || s.busy || s.gameOver) return
+      if (s.screen !== 'playing' || s.paused || s.ui || s.busy || s.gameOver) return
       acc += dt
       if (running) runAcc += dt
       if (acc < 0.25) return
@@ -176,7 +231,7 @@ export const useGame = create<GameState>((set, get) => {
 
     interact: () => {
       const s = get()
-      if (s.screen !== 'playing' || s.paused || s.busy || s.gameOver || !s.nearby) return
+      if (s.screen !== 'playing' || s.paused || s.ui || s.busy || s.gameOver || !s.nearby) return
       const base = dataOf(s)
       const hour = hourOf(s.minute)
       const day = dayOf(s.minute)
@@ -220,6 +275,14 @@ export const useGame = create<GameState>((set, get) => {
           notes.push({ text: 'Duduk santai di taman. Mood naik.', kind: 'good' })
           return commit(d, notes, 'Istirahat…')
         }
+        case 'minimarket':
+        case 'pasar': {
+          const shop = SHOPS[s.nearby]
+          if (hour < shop.open[0] || hour >= shop.open[1]) return toast(`${shop.name} tutup (buka ${shop.hours}).`, 'bad')
+          return set({ ui: { kind: 'shop', shop: s.nearby } })
+        }
+        case 'masak':
+          return set({ ui: { kind: 'cook' } })
         case 'pakbudi': {
           const due = s.rentDueDay
           if (due - day > 3) return toast(`Pak Budi: "Belum waktunya, Nak. Jatuh tempo hari ke-${due}."`, 'info')

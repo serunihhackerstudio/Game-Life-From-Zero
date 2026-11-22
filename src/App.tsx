@@ -10,7 +10,11 @@ export default function App() {
   const screen = useGame((s) => s.screen)
 
   useEffect(() => {
-    const onKey = (e: KeyboardEvent) => { if (e.code === 'Escape') useGame.getState().togglePause() }
+    const onKey = (e: KeyboardEvent) => {
+      const g = useGame.getState()
+      if (e.code === 'Escape') { if (g.ui) g.closeUi(); else g.togglePause() }
+      if (e.code === 'KeyI' && !e.repeat) { if (g.ui?.kind === 'inv') g.closeUi(); else if (!g.ui) g.openUi({ kind: 'inv' }) }
+    }
     const save = () => useGame.getState().saveNow()
     const onVis = () => { if (document.hidden) save() }
     const iv = setInterval(save, 30000)

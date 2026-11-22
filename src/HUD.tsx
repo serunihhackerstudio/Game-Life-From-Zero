@@ -1,5 +1,7 @@
 import { clock, dayOf, hourOf, jobLevel, MEAL_PRICE, periodOf, RENT, rupiah, useGame } from './store'
 import { ZONES } from './data'
+import { Panels } from './Panels'
+import { INV_CAP, invCount } from './items'
 
 function Bar({ label, value, color }: { label: string; value: number; color: string }) {
   return (
@@ -42,17 +44,21 @@ export function HUD() {
         <p className={dueIn <= 1 ? 'warn' : ''}>
           {rupiah(RENT)} · {dueIn > 0 ? `jatuh tempo ${dueIn} hari lagi` : dueIn === 0 ? 'jatuh tempo HARI INI' : `MENUNGGAK ${-dueIn} hari`}
         </p>
+        <h4>Tas</h4>
+        <p>🎒 {invCount(s.inv)}/{INV_CAP} barang · tekan <b>I</b></p>
         <h4>Pekerja Gudang</h4>
         <p>{lvl.name} · {s.shifts} shift{lvl.next ? ` (naik di ${lvl.next})` : ''}</p>
       </div>
 
-      {zone && !s.busy && !s.paused && <div className="prompt"><kbd>E</kbd> {zone.label}</div>}
+      {zone && !s.busy && !s.paused && !s.ui && <div className="prompt"><kbd>E</kbd> {zone.label}</div>}
 
       <div className="toasts">
         {s.toasts.map((t) => <div key={t.id} className={'toast ' + t.kind}>{t.text}</div>)}
       </div>
 
-      <div className="help">WASD/panah: jalan · Shift: lari · Drag mouse / Q R: kamera · Scroll: zoom · E: interaksi · Esc: jeda</div>
+      <div className="help">WASD/panah: jalan · Shift: lari · Drag mouse / Q R: kamera · Scroll: zoom · E: interaksi · I: tas · Esc: jeda</div>
+
+      <Panels />
 
       {s.busy && <div className="overlay"><div>{s.busy}</div></div>}
 
