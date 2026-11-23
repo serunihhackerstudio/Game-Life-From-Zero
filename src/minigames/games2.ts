@@ -53,7 +53,7 @@ export function drawServe(g: G, s: ServeSim, t: number) {
     g.fillStyle = on ? '#e8c08a' : '#c99a62'; g.beginPath(); g.ellipse(cx, 190, Math.min(54, tw / 2 - 6), 22, 0, 0, 7); g.fill()
     g.fillStyle = '#8a5a35'; g.fillRect(cx - 5, 208, 10, 26)
     if (on) { g.strokeStyle = '#ffeaa7'; g.lineWidth = 3; g.beginPath(); g.ellipse(cx, 190, Math.min(60, tw / 2 - 2), 27, 0, 0, 7); g.stroke() }
-    text(g, `${i + 1}`, cx, 246, 12, 'rgba(255,255,255,.55)', 'center')
+    text(g, `${i + 1}`, cx, 241, 12, 'rgba(255,255,255,.55)', 'center')
     text(g, '🧑', cx, 160, 26, '#fff', 'center')
     if (o) {
       const f = o.state === 'wait' ? Math.max(0, o.left / o.patience) : 0
@@ -71,7 +71,7 @@ export function drawServe(g: G, s: ServeSim, t: number) {
     g.fillStyle = on ? '#ffeaa7' : 'rgba(255,255,255,.16)'; rr(g, x - 52, 274, 104, 50, 10); g.fill()
     text(g, DISHES[i], x - 26, 299, 28, '#fff', 'center'); text(g, `${i + 1}`, x + 6, 290, 16, on ? '#222' : '#ffd9a0', 'left', '800'); text(g, DISH_NAMES[i], x + 6, 312, 11, on ? '#222' : '#fff', 'left', '500')
   }
-  text(g, s.held === null ? 'Tangan kosong' : `Membawa ${DISHES[s.held]}`, W / 2, 252, 13, s.held === null ? 'rgba(255,255,255,.5)' : '#ffeaa7', 'center')
+  text(g, s.held === null ? 'Tangan kosong' : `Membawa ${DISHES[s.held]}`, W / 2, 258, 12, s.held === null ? 'rgba(255,255,255,.5)' : '#ffeaa7', 'center')
   text(g, '1–3 ambil lauk · ← → pilih meja · Spasi antar', W / 2, H - 10, 12, 'rgba(255,255,255,.75)', 'center', '500')
   void t
 }
@@ -148,5 +148,6 @@ export function drawRide(g: G, s: RideSim, t: number) {
   g.fillStyle = s.comfort > 60 ? '#2ecc71' : s.comfort > 30 ? '#f1c40f' : '#e74c3c'; rr(g, 464, 66, 160 * (s.comfort / 100), 14, 7); g.fill()
   text(g, s.comfort > 70 ? '😊' : s.comfort > 40 ? '😐' : '😣', 544, 106, 30, '#fff', 'center')
   text(g, `Guncangan ${s.hits}`, 16, 42, 14, '#ffb4b4')
-  text(g, '← → pindah lajur menghindari lubang & motor', W / 2, H - 12, 12, 'rgba(255,255,255,.85)', 'center', '500')
+  g.fillStyle = 'rgba(10,14,20,.78)'; g.fillRect(0, H - 26, W, 26)
+  text(g, '← → pindah lajur menghindari lubang & motor', W / 2, H - 13, 12, 'rgba(255,255,255,.9)', 'center', '500')
 }
