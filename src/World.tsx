@@ -386,16 +386,32 @@ function Trees() {
 }
 
 /** Cahaya lampu jalan: menyala hanya saat malam. */
+// Lampu tambahan yang menyala hanya malam hari: [x, y, z, intensitas, jarak, warna]
+const NIGHT_LIGHTS: [number, number, number, number, number, string][] = [
+  // pasar
+  [18, 2.6, 9.6, 26, 10, '#ffd9a0'], [22.5, 2.6, 9.6, 26, 10, '#ffd9a0'], [27, 2.6, 9.6, 26, 10, '#ffd9a0'], [22.5, 3.2, 7.2, 22, 12, '#ffe6b8'],
+  // taman
+  [-5, 3.4, 11, 34, 13, '#ffe2a8'], [12, 3.4, 11, 34, 13, '#ffe2a8'], [4, 3.2, 14.5, 26, 12, '#ffe2a8'], [-8, 3.0, 16, 18, 10, '#ffe2a8'],
+  // pangkalan ojek
+  [-12, 2.4, 5.6, 30, 11, '#e8ffe0'], [-12, 3.4, 3.4, 20, 10, '#ffe2a8'],
+]
+
+/** Cahaya lampu jalan & lampu area umum: menyala hanya saat malam. */
 function LampLights() {
   const refs = useRef<(PointLight | null)[]>([])
+  const extra = useRef<(PointLight | null)[]>([])
   useFrame(() => {
-    const { k } = daylight((visMinute() % 1440) / 60)
-    refs.current.forEach((l) => { if (l) l.intensity = (1 - k) * 30 })
+    const night = 1 - daylight((visMinute() % 1440) / 60).k
+    refs.current.forEach((l) => { if (l) l.intensity = night * 30 })
+    extra.current.forEach((l, i) => { if (l) l.intensity = night * NIGHT_LIGHTS[i][3] })
   })
   return (
     <>
       {LAMPS.map(([x, z], i) => (
         <pointLight key={i} ref={(r) => { refs.current[i] = r }} position={[x + 0.7, 3.6, z]} intensity={0} distance={11} decay={2} color="#ffd9a0" />
+      ))}
+      {NIGHT_LIGHTS.map(([x, y, z, , d, c], i) => (
+        <pointLight key={'n' + i} ref={(r) => { extra.current[i] = r }} position={[x, y, z]} intensity={0} distance={d} decay={2} color={c} />
       ))}
     </>
   )
