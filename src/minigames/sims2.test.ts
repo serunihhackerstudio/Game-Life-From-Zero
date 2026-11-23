@@ -107,9 +107,9 @@ describe('Antar Penumpang', () => {
   })
   it('tabrakan mengurangi kenyamanan dan ada jeda kebal 1 detik', () => {
     // paksa tabrakan: letakkan baris tepat di atas pemain
-    const t = new RideSim(base); t.rows.push({ y: 270, lanes: [t.lane], kinds: ['hole'], hit: false }); t.step(0.01)
+    const t = new RideSim(base); t.rows.push({ id: 90, y: 270, lanes: [t.lane], kinds: ['hole'], hit: false }); t.step(0.01)
     expect(t.hits).toBe(1); expect(t.comfort).toBe(80)
-    t.rows.push({ y: 270, lanes: [t.lane], kinds: ['bike'], hit: false }); t.step(0.01); expect(t.hits).toBe(1)
+    t.rows.push({ id: 91, y: 270, lanes: [t.lane], kinds: ['bike'], hit: false }); t.step(0.01); expect(t.hits).toBe(1)
   })
   it('lajur dibatasi 0..2 dan kecepatan naik dengan tier', () => {
     const s = new RideSim(base); for (let i = 0; i < 5; i++) s.key('ArrowLeft'); expect(s.lane).toBe(0); for (let i = 0; i < 5; i++) s.key('ArrowRight'); expect(s.lane).toBe(2)

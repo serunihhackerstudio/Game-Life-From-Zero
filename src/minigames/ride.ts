@@ -1,6 +1,6 @@
 import { clamp01, rng, type Opts, type Sim } from './core'
 
-export interface Row { y: number; lanes: number[]; kinds: ('hole' | 'bike')[]; hit: boolean }
+export interface Row { id: number; y: number; lanes: number[]; kinds: ('hole' | 'bike' | 'car')[]; hit: boolean }
 export const RIDE = { PY: 270, BAND: 26, LOOK: 170 }
 
 /** Antar Penumpang: pindah lajur (← →) menghindari lubang dan motor lain; kenyamanan penumpang menentukan tip. */
@@ -18,6 +18,7 @@ export class RideSim implements Sim {
   events: Sim['events'] = []
   private r: () => number
   private since = 0; private nextGap = 120
+  private rid = 0
   constructor(private o: Opts) { this.total = Math.round(45 * o.timeMul); this.time = this.total; this.r = rng(o.seed) }
   get timeLeft() { return Math.max(0, this.time) }
   get progress() { return 1 - this.time / this.total }
@@ -33,7 +34,7 @@ export class RideSim implements Sim {
       const two = this.o.tier > 0 && this.r() < 0.3 + 0.1 * this.o.tier
       const first = Math.floor(this.r() * 3)
       const lanes = two ? [first, (first + 1 + Math.floor(this.r() * 2)) % 3] : [first]
-      this.rows.push({ y: -40, lanes, kinds: lanes.map(() => (this.r() < 0.5 ? 'hole' : 'bike')), hit: false })
+      this.rows.push({ id: this.rid++, y: -40, lanes, kinds: lanes.map(() => { const v = this.r(); return v < 0.42 ? 'hole' : v < 0.74 ? 'bike' : 'car' }), hit: false })
       this.since = 0; this.nextGap = this.gap()
     }
     for (const row of this.rows) {

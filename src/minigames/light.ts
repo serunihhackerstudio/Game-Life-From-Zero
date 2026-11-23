@@ -1,6 +1,6 @@
 import { clamp01, rng, type Opts, type Sim } from './core'
 
-export interface Car { lane: number; cycle: number; arrive: number; openAt: number; openDur: number; opens: boolean; sold: boolean; wasted: boolean }
+export interface Car { lane: number; cycle: number; arrive: number; openAt: number; openDur: number; opens: boolean; sold: boolean; wasted: boolean; soldAt: number; wastedAt: number }
 
 /** Lampu Merah: saat lampu merah mobil berhenti; jual koran ke jendela yang terbuka sebelum lampu hijau. */
 export class LightSim implements Sim {
@@ -38,7 +38,7 @@ export class LightSim implements Sim {
       const opens = this.r() > 0.2
       const openDur = Math.max(0.9, (1.8 - 0.2 * this.o.tier) * this.o.tol)
       const openAt = arrive + 0.5 + this.r() * Math.max(0.1, base + this.RED - openDur - arrive - 0.5)
-      this.cars.push({ lane, cycle: this.cycle, arrive, openAt, openDur, opens, sold: false, wasted: false })
+      this.cars.push({ lane, cycle: this.cycle, arrive, openAt, openDur, opens, sold: false, wasted: false, soldAt: -1, wastedAt: -1 })
     }
   }
   isOpen(c: Car) { return c.opens && this.clock >= c.openAt && this.clock < c.openAt + c.openDur }
@@ -69,7 +69,7 @@ export class LightSim implements Sim {
     else if (code === 'Space') {
       const c = this.carAt(this.cursor)
       if (!c || c.sold) { this.wasted++; this.shake = 0.25; this.events.push('bad'); return }
-      if (this.isOpen(c)) { c.sold = true; this.sold++; this.events.push('coin') } else { c.wasted = true; this.wasted++; this.shake = 0.25; this.events.push('bad') }
+      if (this.isOpen(c)) { c.sold = true; c.soldAt = this.clock; this.sold++; this.events.push('coin') } else { c.wasted = true; c.wastedAt = this.clock; this.wasted++; this.shake = 0.25; this.events.push('bad') }
     }
   }
 
