@@ -2,7 +2,7 @@ import { useEffect } from 'react'
 import { useGame, hourOf, visMinute } from './store'
 import { audio, type LoopKind } from './audio'
 import { daylight } from './glow'
-import { useSettings, type Look, type Quality } from './settings'
+import { useSettings, type Look, type Quality, type TouchMode } from './settings'
 
 const QNAME: Record<Quality, string> = { low: 'Rendah', medium: 'Sedang', high: 'Tinggi' }
 const QDESC: Record<Quality, string> = {
@@ -60,6 +60,17 @@ export function Settings() {
         <h3 className="sec">Tampilan</h3>
         <label className="chk"><input type="checkbox" checked={s.showHelp} onChange={(e) => s.patch({ showHelp: e.target.checked })} /> Tampilkan petunjuk kontrol di bawah layar</label>
 
+        <h3 className="sec">Layar sentuh</h3>
+        <div className="seg">
+          {([['auto', 'Otomatis'], ['on', 'Selalu tampil'], ['off', 'Sembunyikan']] as [TouchMode, string][]).map(([m, l]) => (
+            <button key={m} className={s.touch === m ? 'sel' : ''} onClick={() => s.patch({ touch: m })}>{l}</button>
+          ))}
+        </div>
+        <p className="hint">Joystick di kiri, seret kanan untuk memutar kamera, cubit untuk zoom. Untuk HP, putar ke mode landscape.</p>
+        {typeof document !== 'undefined' && document.fullscreenEnabled && (
+          <button className="fs-btn" onClick={() => { if (document.fullscreenElement) void document.exitFullscreen(); else void document.documentElement.requestFullscreen?.().catch(() => undefined) }}>⛶ Layar penuh</button>
+        )}
+
         <h3 className="sec">Kontrol</h3>
         <p className="hint keys">WASD / panah: jalan · Shift: lari · Drag mouse atau Q R: putar kamera · Scroll: zoom · E: interaksi · I: tas · Esc: jeda</p>
         <div className="sheet-f"><button className="primary-s" onClick={() => s.setOpen(false)}>Selesai</button></div>
@@ -101,10 +112,10 @@ export function AudioDirector() {
 
   useEffect(() => {
     const go = () => audio.init()
-    window.addEventListener('pointerdown', go); window.addEventListener('keydown', go)
+    window.addEventListener('pointerdown', go); window.addEventListener('keydown', go); window.addEventListener('touchend', go); window.addEventListener('click', go)
     const click = (e: PointerEvent) => { if ((e.target as HTMLElement | null)?.closest?.('button')) audio.sfx('click') }
     document.addEventListener('pointerdown', click)
-    return () => { window.removeEventListener('pointerdown', go); window.removeEventListener('keydown', go); document.removeEventListener('pointerdown', click) }
+    return () => { window.removeEventListener('pointerdown', go); window.removeEventListener('keydown', go); window.removeEventListener('touchend', go); window.removeEventListener('click', go); document.removeEventListener('pointerdown', click) }
   }, [])
   useEffect(() => { audio.apply() }, [set.master, set.music, set.sfx, set.ambient, set.muted])
   useEffect(() => {

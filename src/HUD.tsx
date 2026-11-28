@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { clock, dayOf, hourOf, jobLevel, MEAL_PRICE, periodOf, RENT, rupiah, useGame, visMinute } from './store'
 import { ZONES } from './data'
 import { Panels } from './Panels'
+import { useIsTouch, useTouchState } from './input'
 import { MiniHost } from './minigames/MiniHost'
 import { useSettings } from './settings'
 import { affLabel, NPCS } from './npcs'
@@ -20,6 +21,8 @@ function Bar({ label, value, color }: { label: string; value: number; color: str
 export function HUD() {
   const s = useGame()
   const showHelp = useSettings((st) => st.showHelp)
+  const touch = useIsTouch()
+  const infoOpen = useTouchState((st) => st.info)
   const [, force] = useState(0)
   const scening = !!s.scene && isFinite(s.scene.dur)
   useEffect(() => { // jam berjalan cepat selama adegan
@@ -67,7 +70,7 @@ export function HUD() {
         )}
       </div>
 
-      <div className="panel tr">
+      <div className={'panel tr' + (touch && !infoOpen ? ' collapsed' : '')}>
         <h4>Target Harian</h4>
         <ul>
           {goal(g.worked, 'Bekerja (satu shift)')}
@@ -91,15 +94,16 @@ export function HUD() {
         <p>{s.shifts} shift · {lvl.name} · {s.hired.length} pekerjaan{s.hired.length === 0 ? ' — lamar di Job Center' : ''}</p>
       </div>
 
-      {zone && !s.busy && !s.paused && !s.ui && <div className="prompt"><kbd>E</kbd> {zone.label}</div>}
+      {zone && !s.busy && !s.paused && !s.ui && <div className="prompt" onPointerDown={() => { if (touch) s.interact() }}>{!touch && <kbd>E</kbd>} {zone.label}</div>}
 
       <div className="toasts">
         {s.toasts.map((t) => <div key={t.id} className={'toast ' + t.kind}>{t.text}</div>)}
       </div>
 
-      {showHelp && <div className="help">WASD/panah: jalan · Shift: lari · Drag mouse / Q R: kamera · Scroll: zoom · E: interaksi · I: tas · Esc: jeda</div>}
+      {showHelp && !touch && <div className="help">WASD/panah: jalan · Shift: lari · Drag mouse / Q R: kamera · Scroll: zoom · E: interaksi · I: tas · Esc: jeda</div>}
 
       <Panels />
+      {touch && s.screen === 'playing' && !s.scene && <div className="rotate-hint">📱 Putar ke mode landscape untuk pengalaman terbaik</div>}
       <MiniHost />
 
       {s.scene && (

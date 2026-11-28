@@ -192,7 +192,7 @@ function Dialog({ npcId, nodeId }: { npcId: keyof typeof NPCS; nodeId: string })
           </button>
         ))}
       </div>
-      <div className="dlg-f">Spasi: lewati teks · 1–{Math.max(1, choices.length)}: pilih · Esc: tutup</div>
+      <div className="dlg-f"><span className="kb">Spasi: lewati teks · 1–{Math.max(1, choices.length)}: pilih · Esc: tutup</span><span className="tp">Ketuk teks untuk melewati · <button className="x2" onClick={() => useGame.getState().closeUi()}>Tutup ✕</button></span></div>
     </div>
   )
 }

@@ -15,7 +15,7 @@ import { playerPos, useGame, visMinute } from './store'
 import { QUALITY, useSettings } from './settings'
 
 const Label = ({ pos, text }: { pos: [number, number, number]; text: string }) => (
-  <Html position={pos} center distanceFactor={16} style={{ pointerEvents: 'none' }}>
+  <Html position={pos} center zIndexRange={[10, 0]} style={{ pointerEvents: 'none' }}>
     <div className="label">{text}</div>
   </Html>
 )

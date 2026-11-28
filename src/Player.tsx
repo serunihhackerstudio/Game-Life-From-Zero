@@ -7,6 +7,7 @@ import { invCount } from './items'
 import { audio } from './audio'
 import { resolve, ZONES } from './data'
 import { playerPos, useGame } from './store'
+import { touchIn } from './input'
 
 const RADIUS = 0.4
 const WALK = 3.4, RUN = 6.2
@@ -33,6 +34,7 @@ export function Player() {
     ;(window as unknown as Record<string, unknown>).__lfz = {
       tp: (x: number, z: number, y = 0, d = 8) => { playerPos.x = x; playerPos.z = z; yaw.current = y; dist.current = d },
       set: (p: Record<string, unknown>) => useGame.setState(p),
+      pos: () => ({ x: playerPos.x, z: playerPos.z, yaw: yaw.current, dist: dist.current }),
     }
   }, [])
 
@@ -44,18 +46,29 @@ export function Player() {
     }
     const up = (e: KeyboardEvent) => { keys.current[e.code] = false }
     const blur = () => { keys.current = {} }
-    let dragging = false
-    const pd = () => { dragging = true }
-    const pu = () => { dragging = false }
-    const pm = (e: PointerEvent) => { if (dragging) yaw.current -= e.movementX * 0.005 }
+    // kamera: seret 1 jari/pointer = putar, cubit 2 jari = zoom (clientX/Y dipakai karena movementX tak andal di layar sentuh)
+    const ptrs = new Map<number, { x: number; y: number }>()
+    let pinch = 0
+    const pd = (e: PointerEvent) => { ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY }); if (ptrs.size === 2) { const [a, b] = [...ptrs.values()]; pinch = Math.hypot(a.x - b.x, a.y - b.y) } }
+    const pu = (e: PointerEvent) => { ptrs.delete(e.pointerId); pinch = 0 }
+    const pm = (e: PointerEvent) => {
+      const p = ptrs.get(e.pointerId); if (!p) return
+      if (ptrs.size === 1) { yaw.current -= (e.clientX - p.x) * 0.006; p.x = e.clientX; p.y = e.clientY }
+      else if (ptrs.size === 2) {
+        p.x = e.clientX; p.y = e.clientY
+        const [a, b] = [...ptrs.values()], d = Math.hypot(a.x - b.x, a.y - b.y)
+        if (pinch > 0) dist.current = MathUtils.clamp(dist.current * (pinch / d), 3, 14)
+        pinch = d
+      }
+    }
     const wheel = (e: WheelEvent) => { dist.current = MathUtils.clamp(dist.current + e.deltaY * 0.01, 3, 14) }
     const el = gl.domElement
     window.addEventListener('keydown', down); window.addEventListener('keyup', up); window.addEventListener('blur', blur)
-    el.addEventListener('pointerdown', pd); window.addEventListener('pointerup', pu); window.addEventListener('pointermove', pm)
+    el.addEventListener('pointerdown', pd); window.addEventListener('pointerup', pu); window.addEventListener('pointercancel', pu); window.addEventListener('pointermove', pm)
     el.addEventListener('wheel', wheel, { passive: true })
     return () => {
       window.removeEventListener('keydown', down); window.removeEventListener('keyup', up); window.removeEventListener('blur', blur)
-      el.removeEventListener('pointerdown', pd); window.removeEventListener('pointerup', pu); window.removeEventListener('pointermove', pm)
+      el.removeEventListener('pointerdown', pd); window.removeEventListener('pointerup', pu); window.removeEventListener('pointercancel', pu); window.removeEventListener('pointermove', pm)
       el.removeEventListener('wheel', wheel)
     }
   }, [gl])
@@ -95,9 +108,10 @@ export function Player() {
 
     let speed = 0
     if (!frozen) {
-      const fw = (k.KeyW || k.ArrowUp ? 1 : 0) - (k.KeyS || k.ArrowDown ? 1 : 0)
-      const rt = (k.KeyD || k.ArrowRight ? 1 : 0) - (k.KeyA || k.ArrowLeft ? 1 : 0)
-      if (fw || rt) {
+      const fw = (k.KeyW || k.ArrowUp ? 1 : 0) - (k.KeyS || k.ArrowDown ? 1 : 0) + touchIn.y
+      const rt = (k.KeyD || k.ArrowRight ? 1 : 0) - (k.KeyA || k.ArrowLeft ? 1 : 0) + touchIn.x
+      const mag = Math.min(1, Math.hypot(fw, rt))
+      if (mag > 0.12) {
         const sy = Math.sin(yaw.current), cy = Math.cos(yaw.current)
         let vx = -sy * fw + cy * rt
         let vz = -cy * fw - sy * rt
@@ -106,8 +120,8 @@ export function Player() {
         // kondisi tubuh memperlambat gerak: lapar, lelah, sakit
         const lv = (v: number, th: number) => Math.min(1, Math.max(0, (th - v) / th))
         const slow = Math.max(0.5, 1 - 0.3 * lv(s.energy, 35) - 0.25 * lv(s.hunger, 35) - 0.25 * lv(s.health, 60) - 0.15 * lv(s.thirst, 35))
-        const running = !!(k.ShiftLeft || k.ShiftRight) && s.energy > 5 && s.hunger > 0
-        speed = (running ? RUN : WALK) * slow
+        const running = (!!(k.ShiftLeft || k.ShiftRight) || touchIn.run || (touchIn.x * touchIn.x + touchIn.y * touchIn.y > 0.88)) && s.energy > 5 && s.hunger > 0
+        speed = (running ? RUN : WALK) * slow * (mag < 1 ? 0.45 + 0.55 * mag : 1)
         const [nx, nz] = resolve(playerPos.x + vx * speed * dt, playerPos.z + vz * speed * dt, RADIUS)
         playerPos.x = nx; playerPos.z = nz
         const target = Math.atan2(vx, vz)

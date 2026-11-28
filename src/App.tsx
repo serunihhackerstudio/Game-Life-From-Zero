@@ -8,11 +8,14 @@ import { useGame } from './store'
 import { AudioDirector, Credits, Settings } from './Settings'
 import { QUALITY, useSettings } from './settings'
 import { Grading } from './Fx'
+import { TouchControls } from './TouchControls'
+import { useTouchSetup } from './input'
 
 export default function App() {
   const screen = useGame((s) => s.screen)
   const quality = useSettings((s) => s.quality)
   const look = useSettings((s) => s.look)
+  useTouchSetup()
   useEffect(() => { document.documentElement.dataset.look = look }, [look])
   const q = QUALITY[quality]
 
@@ -31,7 +34,7 @@ export default function App() {
     return () => { clearInterval(iv); window.removeEventListener('keydown', onKey); document.removeEventListener('visibilitychange', onVis) }
   }, [])
 
-  const overlays = <><Settings /><Credits /><AudioDirector /></>
+  const overlays = <><Settings /><Credits /><AudioDirector /><TouchControls /></>
   if (screen === 'menu') return <><Menu />{overlays}</>
   return (
     <>

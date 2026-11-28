@@ -2,7 +2,8 @@ import { create } from 'zustand'
 
 export type Quality = 'low' | 'medium' | 'high'
 export type Look = 'classic' | 'warm'
-interface Persist { look: Look; quality: Quality; master: number; music: number; sfx: number; ambient: number; muted: boolean; showHelp: boolean }
+export type TouchMode = 'auto' | 'on' | 'off'
+interface Persist { touch: TouchMode; look: Look; quality: Quality; master: number; music: number; sfx: number; ambient: number; muted: boolean; showHelp: boolean }
 interface SettingsState extends Persist {
   open: boolean; credits: boolean
   patch: (p: Partial<Persist>) => void
@@ -11,7 +12,8 @@ interface SettingsState extends Persist {
 }
 
 const KEY = 'lfz-settings'
-const DEFAULTS: Persist = { look: 'warm', quality: 'medium', master: 0.8, music: 0.5, sfx: 0.8, ambient: 0.7, muted: false, showHelp: true }
+const coarse = (() => { try { return matchMedia('(hover: none) and (pointer: coarse)').matches || new URLSearchParams(location.search).has('touch') } catch { return false } })()
+const DEFAULTS: Persist = { touch: 'auto', look: 'warm', quality: coarse ? 'low' : 'medium', master: 0.8, music: 0.5, sfx: 0.8, ambient: 0.7, muted: false, showHelp: true }
 
 function load(): Persist {
   try {
@@ -27,8 +29,8 @@ export const useSettings = create<SettingsState>((set, get) => ({
   credits: false,
   patch: (p) => {
     set(p)
-    const { look, quality, master, music, sfx, ambient, muted, showHelp } = get()
-    try { localStorage.setItem(KEY, JSON.stringify({ look, quality, master, music, sfx, ambient, muted, showHelp })) } catch { /* abaikan */ }
+    const { touch, look, quality, master, music, sfx, ambient, muted, showHelp } = get()
+    try { localStorage.setItem(KEY, JSON.stringify({ touch, look, quality, master, music, sfx, ambient, muted, showHelp })) } catch { /* abaikan */ }
   },
   setOpen: (open) => set({ open }),
   setCredits: (credits) => set({ credits }),
