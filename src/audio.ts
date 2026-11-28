@@ -11,7 +11,7 @@ class Engine {
   private master!: GainNode; private music!: GainNode; private sfxG!: GainNode; private amb!: GainNode; private duck!: GainNode
   private analyser!: AnalyserNode
   private noise!: AudioBuffer
-  private hum!: GainNode; private cricket!: GainNode; private wind!: GainNode
+  private hum!: GainNode; private wind!: GainNode
   private echo!: DelayNode
   private beat = 0; private nextT = 0
   private night = false; private daylightK = 1
@@ -39,6 +39,7 @@ class Engine {
     this.apply()
     this.timers.push(window.setInterval(() => this.scheduleMusic(), 120))
     this.timers.push(window.setInterval(() => this.birds(), 1800))
+    this.timers.push(window.setInterval(() => this.crickets(), 1300))
     this.timers.push(window.setInterval(() => this.passby(), 5200))
     document.addEventListener('visibilitychange', () => {
       if (!this.ctx) return
@@ -89,13 +90,6 @@ class Engine {
     const mk = (type: BiquadFilterType, f: number, q: number) => { const s = this.src(), fl = this.filt(type, f, q), g = c.createGain(); g.gain.value = 0; s.connect(fl); fl.connect(g); g.connect(this.amb); s.start(); return g }
     this.hum = mk('lowpass', 420, 0.5)
     this.wind = mk('bandpass', 700, 0.4)
-    // jangkrik: osilator tinggi dimodulasi pulsa cepat
-    const o = c.createOscillator(); o.type = 'sine'; o.frequency.value = 4300
-    const cg = (this.cricket = c.createGain()); cg.gain.value = 0
-    const am = c.createGain(); am.gain.value = 0
-    const lfo = c.createOscillator(); lfo.type = 'square'; lfo.frequency.value = 13
-    const lg = c.createGain(); lg.gain.value = 0.5
-    lfo.connect(lg); lg.connect(am.gain); o.connect(am); am.connect(cg); cg.connect(this.amb); o.start(); lfo.start()
     // hembusan angin berayun pelan
     const sl = c.createOscillator(); sl.frequency.value = 0.12; const sg = c.createGain(); sg.gain.value = 0.015
     sl.connect(sg); sg.connect(this.wind.gain); sl.start()
@@ -107,7 +101,6 @@ class Engine {
     const t = this.ctx.currentTime, m = inMenu ? 0.3 : 1
     this.hum.gain.setTargetAtTime((0.05 + 0.1 * k) * m, t, 0.8)
     this.wind.gain.setTargetAtTime(0.02 * m + 0.0, t, 0.8)
-    this.cricket.gain.setTargetAtTime((1 - k) * 0.05 * m, t, 1.2)
   }
   /** Redam musik & suasana (dialog/jeda). */
   setDuck(v: number) { if (this.ctx) this.duck.gain.setTargetAtTime(v, this.ctx.currentTime, 0.25) }
@@ -116,6 +109,13 @@ class Engine {
     const c = this.ctx, t = c.currentTime, pan = c.createStereoPanner(); pan.pan.value = Math.random() * 2 - 1; pan.connect(this.amb)
     const base = 2600 + Math.random() * 1200
     for (let i = 0; i < 2 + Math.floor(Math.random() * 3); i++) this.tone(base, 'sine', t + i * 0.13, 0.1, 0.05, pan, base * (1.15 + Math.random() * 0.3))
+  }
+  /** Jangkrik malam: cicitan pendek (beberapa denyut) dengan jeda senyap — bukan nada yang menyala terus. */
+  private crickets() {
+    if (!this.ctx || this.daylightK > 0.3 || Math.random() > 0.7) return
+    const c = this.ctx, t = c.currentTime + 0.05, pan = c.createStereoPanner(); pan.pan.value = Math.random() * 1.6 - 0.8; pan.connect(this.amb)
+    const base = 3600 + Math.random() * 700, n = 3 + Math.floor(Math.random() * 3), gap = 0.07 + Math.random() * 0.03
+    for (let i = 0; i < n; i++) this.tone(base + i * 12, 'sine', t + i * gap, 0.035, 0.012 * (1 - this.daylightK), pan, undefined, 0.006)
   }
   private passby() {
     if (!this.ctx || this.daylightK < 0.12 || Math.random() > 0.55) return
