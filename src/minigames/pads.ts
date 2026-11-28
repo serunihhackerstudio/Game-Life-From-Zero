@@ -40,3 +40,14 @@ export function padFor(id: GameId, s: S): Pad {
     }
   }
 }
+
+/** Petunjuk versi layar sentuh (menggantikan istilah keyboard). */
+export const TOUCH_HOWTO: Record<GameId, { keys: string; howto: string[] }> = {
+  gudang: { keys: 'Ketuk tombol 1 / 2 / 3', howto: ['Peti berwarna lewat di ban berjalan.', 'Ketuk tombol sewarna dengan peti terdepan (yang bergaris putih): merah 1, biru 2, hijau 3.', 'Peti berat (level lanjut) perlu diketuk dua kali.'] },
+  koran: { keys: 'Ketuk ▲ ▼ lalu LEMPAR', howto: ['Saat lampu merah, mobil berhenti di tiap lajur.', 'Ketuk ▲ atau ▼ untuk pindah ke lajur mobil yang jendelanya menyala kuning.', 'Ketuk LEMPAR saat jendela terbuka. Jendela tertutup = sia-sia.', 'Lampu hijau: mobil jalan dan peluang hilang.'] },
+  nasgor: { keys: 'Ketuk bahan · A D · BALIK', howto: ['Ketuk bahan sesuai urutan pesanan (yang menyala kuning).', 'Aduk dengan mengetuk A dan D bergantian secepatnya.', 'Ketuk BALIK saat penanda berada di zona hijau.', 'Selesaikan 4 piring sebelum waktu habis.'] },
+  parkir: { keys: 'Ketuk ◀ ▶ lalu PARKIR', howto: ['Motor mengantre di bawah dan sabarnya terus berkurang.', 'Ketuk ◀ ▶ untuk memilih slot kosong, lalu ketuk PARKIR / AMBIL untuk memarkirkan motor terdepan.', 'Saat motor menyala 💰, ketuk PARKIR / AMBIL di slotnya sebelum ia pergi.'] },
+  pelayan: { keys: 'Ketuk lauk · ◀ ▶ · ANTAR', howto: ['Pelanggan memesan lewat gelembung di atas meja.', 'Ketuk lauk yang dipesan, pilih meja dengan ◀ ▶, lalu ketuk ANTAR.', 'Lauk yang salah dihitung kesalahan. Pelanggan yang menunggu terlalu lama pergi dengan marah.'] },
+  kurir: { keys: 'Ketuk nomor alamat · SERAHKAN', howto: ['Peta menampilkan gudang dan beberapa alamat bernomor.', 'Ketuk nomor alamat sesuai urutan kunjungan. Rute lebih pendek = skor lebih tinggi. ↶ untuk membatalkan.', 'Saat tiba di alamat, ketuk SERAHKAN sebelum waktu habis. Ada 3 ronde.'] },
+  ojek: { keys: 'Ketuk ◀ ▶', howto: ['Jalan raya tiga lajur bergulir ke arahmu.', 'Ketuk ◀ atau ▶ untuk pindah lajur menghindari lubang, motor, dan mobil.', 'Setiap guncangan mengurangi kenyamanan penumpang, dan tip mengikuti kenyamanannya.'] },
+}

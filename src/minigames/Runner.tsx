@@ -54,7 +54,6 @@ export function Runner({ def, opts, onDone }: { def: GameDef; opts: Opts; onDone
     <div className="mg-layout">
       <div className="mg-wrap">
         <canvas ref={cv} width={W} height={H} className="mg-canvas" />
-        <button className="mg-pausebtn" onClick={() => setPaused(true)} aria-label="Jeda">⏸</button>
         {count > 0 && <div className="mg-count">{count}</div>}
         {paused && (
           <div className="mg-pause">
@@ -64,10 +63,10 @@ export function Runner({ def, opts, onDone }: { def: GameDef; opts: Opts; onDone
           </div>
         )}
       </div>
-      {pad && (
+      {(
         <div className="mg-pad">
-          {pad.rows.map((row, i) => (
-            <div key={i} className="mg-padrow">
+          {(pad?.rows ?? []).map((row, i) => (
+            <div key={i} className={'mg-padrow' + (row.length >= 4 ? ' many' : '')}>
               {row.map((b) => (
                 <button key={b.code + b.label} className={'mg-btn' + (b.wide ? ' wide' : '') + (b.code === 'None' ? ' idle' : '')} style={b.color ? { background: b.color } : undefined}
                   onPointerDown={(e) => { e.preventDefault(); press(b.code) }} onContextMenu={(e) => e.preventDefault()}>
@@ -76,6 +75,7 @@ export function Runner({ def, opts, onDone }: { def: GameDef; opts: Opts; onDone
               ))}
             </div>
           ))}
+          <button className="mg-pausebtn" onClick={() => setPaused(true)} aria-label="Jeda">⏸ Jeda</button>
         </div>
       )}
     </div>

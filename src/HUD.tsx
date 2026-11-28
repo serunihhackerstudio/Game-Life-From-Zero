@@ -108,7 +108,7 @@ export function HUD() {
 
       {s.scene && (
         <>
-          <div className="bars"><div /><div /></div>
+          {!s.mini && <div className="bars"><div /><div /></div>}
           {scening && <div className="caption">{s.scene.label}</div>}
         </>
       )}

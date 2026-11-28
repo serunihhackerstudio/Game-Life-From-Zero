@@ -4,6 +4,8 @@ import { jobLevel, rupiah, useGame, type MiniState } from '../store'
 import type { Opts } from './core'
 import { GAMES } from './games'
 import { Runner } from './Runner'
+import { TOUCH_HOWTO } from './pads'
+import { useIsTouch } from '../input'
 
 const lv = (v: number, th: number) => Math.min(1, Math.max(0, (th - v) / th))
 const TIER = ['Beginner', 'Intermediate', 'Advanced', 'Expert']
@@ -15,6 +17,8 @@ function Inner({ m }: { m: MiniState }) {
   const tier = Math.max(0, TIER.indexOf(jobLevel(shifts).name))
   const plays = s.jobPlays[job.id] ?? 0
   const canAuto = plays >= 3
+  const touch = useIsTouch()
+  const how = touch ? TOUCH_HOWTO[m.job as keyof typeof TOUCH_HOWTO] : def
 
   // kondisi tubuh -> kesulitan
   const tol = Math.max(0.65, 1 - 0.25 * lv(s.energy, 35) - 0.1 * lv(s.thirst, 35))
@@ -51,8 +55,8 @@ function Inner({ m }: { m: MiniState }) {
         <div className="mini-card">
           <div className="mini-h"><span className="mini-ic">{def.icon}</span><div><h2>{def.title}</h2><small>{job.name} · {jobLevel(shifts).name} · {rupiah(job.wage)} dasar</small></div></div>
           <p className="mini-bl">{def.blurb}</p>
-          <ul className="mini-ul">{def.howto.map((h) => <li key={h}>{h}</li>)}</ul>
-          <div className="mini-keys"><kbd>{def.keys}</kbd><span>Esc: jeda</span></div>
+          <ul className="mini-ul">{how.howto.map((h) => <li key={h}>{h}</li>)}</ul>
+          <div className="mini-keys"><kbd>{how.keys}</kbd>{!touch && <span>Esc: jeda</span>}</div>
           {notes.length > 0 && <div className="mini-warn">{notes.map((n) => <div key={n}>⚠ {n}</div>)}</div>}
           <div className="mini-btns">
             <button className="go" onClick={() => s.beginMini()}>Mulai <kbd>Spasi</kbd></button>
