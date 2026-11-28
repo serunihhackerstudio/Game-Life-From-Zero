@@ -2,7 +2,7 @@ import { useEffect } from 'react'
 import { useGame, hourOf, visMinute } from './store'
 import { audio, type LoopKind } from './audio'
 import { daylight } from './glow'
-import { useSettings, type Quality } from './settings'
+import { useSettings, type Look, type Quality } from './settings'
 
 const QNAME: Record<Quality, string> = { low: 'Rendah', medium: 'Sedang', high: 'Tinggi' }
 const QDESC: Record<Quality, string> = {
@@ -40,6 +40,14 @@ export function Settings() {
         <Slider label="Musik" k="music" />
         <Slider label="Efek suara" k="sfx" />
         <Slider label="Suasana kota" k="ambient" />
+
+        <h3 className="sec">Gaya tampilan</h3>
+        <div className="seg">
+          {(['warm', 'classic'] as Look[]).map((l) => (
+            <button key={l} className={s.look === l ? 'sel' : ''} onClick={() => s.patch({ look: l })}>{l === 'warm' ? 'Hangat' : 'Klasik'}</button>
+          ))}
+        </div>
+        <p className="hint">{s.look === 'warm' ? 'Cahaya senja keemasan, warna sinematik (bloom, vinyet), dan HUD berbingkai emas. Efek layar nonaktif di kualitas Rendah.' : 'Tampilan awal: cahaya netral dan HUD gelap sederhana.'}</p>
 
         <h3 className="sec">Grafis</h3>
         <div className="seg">

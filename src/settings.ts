@@ -1,7 +1,8 @@
 import { create } from 'zustand'
 
 export type Quality = 'low' | 'medium' | 'high'
-interface Persist { quality: Quality; master: number; music: number; sfx: number; ambient: number; muted: boolean; showHelp: boolean }
+export type Look = 'classic' | 'warm'
+interface Persist { look: Look; quality: Quality; master: number; music: number; sfx: number; ambient: number; muted: boolean; showHelp: boolean }
 interface SettingsState extends Persist {
   open: boolean; credits: boolean
   patch: (p: Partial<Persist>) => void
@@ -10,7 +11,7 @@ interface SettingsState extends Persist {
 }
 
 const KEY = 'lfz-settings'
-const DEFAULTS: Persist = { quality: 'medium', master: 0.8, music: 0.5, sfx: 0.8, ambient: 0.7, muted: false, showHelp: true }
+const DEFAULTS: Persist = { look: 'warm', quality: 'medium', master: 0.8, music: 0.5, sfx: 0.8, ambient: 0.7, muted: false, showHelp: true }
 
 function load(): Persist {
   try {
@@ -26,12 +27,19 @@ export const useSettings = create<SettingsState>((set, get) => ({
   credits: false,
   patch: (p) => {
     set(p)
-    const { quality, master, music, sfx, ambient, muted, showHelp } = get()
-    try { localStorage.setItem(KEY, JSON.stringify({ quality, master, music, sfx, ambient, muted, showHelp })) } catch { /* abaikan */ }
+    const { look, quality, master, music, sfx, ambient, muted, showHelp } = get()
+    try { localStorage.setItem(KEY, JSON.stringify({ look, quality, master, music, sfx, ambient, muted, showHelp })) } catch { /* abaikan */ }
   },
   setOpen: (open) => set({ open }),
   setCredits: (credits) => set({ credits }),
 }))
+
+/** Efek layar (bloom, gradasi warna, tilt-shift) per kualitas — hanya untuk gaya Hangat. */
+export const FX = {
+  low: { on: false, bloom: 0, tilt: false, msaa: 0 },
+  medium: { on: true, bloom: 0.5, tilt: false, msaa: 0 },
+  high: { on: true, bloom: 0.62, tilt: true, msaa: 4 },
+}
 
 /** Parameter kualitas grafis. */
 export const QUALITY = {

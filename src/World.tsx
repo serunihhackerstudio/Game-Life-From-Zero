@@ -1,8 +1,8 @@
-import { useEffect, useMemo, useRef } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef } from 'react'
 import { useFrame, useThree } from '@react-three/fiber'
 import { Environment, Html, Lightformer } from '@react-three/drei'
-import { Color, DirectionalLight, DoubleSide, Fog, Group, HemisphereLight, Mesh, MeshStandardMaterial, PointLight, Sprite } from 'three'
-import { KOS_WALL_H, KOS_WALLS, LAMPS, TREES, ZONES } from './data'
+import { Color, DirectionalLight, DoubleSide, Fog, Group, HemisphereLight, InstancedMesh, Mesh, MeshStandardMaterial, Object3D, PointLight, Sprite } from 'three'
+import { HEDGES, KOS_WALL_H, KOS_WALLS, LAMPS, TREES, ZONES } from './data'
 import { daylight, registerGlow, updateGlow } from './glow'
 import { Humanoid, IDLE_ACT, type Act } from './Humanoid'
 import { NPCS, type NpcId } from './npcs'
@@ -23,6 +23,28 @@ const Label = ({ pos, text }: { pos: [number, number, number]; text: string }) =
 const DAY_SKY = new Color('#8fc7ff'), NIGHT_SKY = new Color('#0a1128'), DUSK = new Color('#ff9a5a')
 const tmp = new Color()
 
+interface Pal { sky: string; sun: string; si: number; hs: string; hg: string; hi: number; env: number }
+// Palet gaya "Hangat": kunci per jam (fajar → siang → senja keemasan → magrib → malam hangat).
+const WARM: [number, Pal][] = [
+  [0, { sky: '#141b40', sun: '#8aa4ff', si: 0.2, hs: '#52619f', hg: '#2d2640', hi: 0.34, env: 0.05 }],
+  [5, { sky: '#161d44', sun: '#8aa4ff', si: 0.2, hs: '#52619f', hg: '#2d2640', hi: 0.34, env: 0.05 }],
+  [6.2, { sky: '#f4b08a', sun: '#ffb27a', si: 1.1, hs: '#ffd7b8', hg: '#7a5a48', hi: 0.55, env: 0.2 }],
+  [8.5, { sky: '#a8d4ee', sun: '#ffe7c4', si: 1.7, hs: '#e4f0ff', hg: '#7a8a5a', hi: 0.7, env: 0.35 }],
+  [12, { sky: '#8fc9ff', sun: '#fff8ec', si: 1.9, hs: '#d9ecff', hg: '#7a8a50', hi: 0.75, env: 0.4 }],
+  [15.2, { sky: '#bcd2d8', sun: '#ffe0b0', si: 2.0, hs: '#ffe8cc', hg: '#86703f', hi: 0.72, env: 0.38 }],
+  [17.3, { sky: '#f2a96e', sun: '#ffa850', si: 2.3, hs: '#ffd2a0', hg: '#86603c', hi: 0.8, env: 0.3 }],
+  [18.6, { sky: '#8a5a7e', sun: '#ff7a50', si: 1.2, hs: '#c8909c', hg: '#4a3a44', hi: 0.58, env: 0.16 }],
+  [19.8, { sky: '#24274f', sun: '#8aa4ff', si: 0.3, hs: '#5c6aa8', hg: '#2d2640', hi: 0.36, env: 0.07 }],
+  [24, { sky: '#141b40', sun: '#8aa4ff', si: 0.2, hs: '#52619f', hg: '#2d2640', hi: 0.34, env: 0.05 }],
+]
+const cA = new Color(), cB = new Color()
+function warmPal(h: number) {
+  let i = 0; while (i < WARM.length - 2 && h >= WARM[i + 1][0]) i++
+  const [h0, a] = WARM[i], [h1, b] = WARM[i + 1], t = Math.min(1, Math.max(0, (h - h0) / (h1 - h0 || 1)))
+  const col = (x: string, y: string, out: Color) => out.set(x).lerp(cB.set(y), t)
+  return { t, a, b, col, num: (x: number, y: number) => x + (y - x) * t }
+}
+
 /** Siklus siang-malam: warna langit, matahari, lampu jalan, jendela. */
 function DayNight() {
   const dir = useRef<DirectionalLight>(null)
@@ -34,7 +56,18 @@ function DayNight() {
     scene.background = new Color('#8fc7ff')
   }, [scene])
   useFrame(() => {
-    const { ang, sun, k, dusk } = daylight((visMinute() % 1440) / 60)
+    const h = (visMinute() % 1440) / 60
+    const { ang, sun, k, dusk } = daylight(h)
+    const warm = useSettings.getState().look === 'warm'
+    if (warm) {
+      const w = warmPal(h), n = w.num
+      w.col(w.a.sky, w.b.sky, cA); ;(scene.background as Color).copy(cA); if (scene.fog) (scene.fog as Fog).color.copy(cA)
+      if (dir.current) { dir.current.position.set(Math.cos(ang) * 40, Math.max(sun, 0.16) * 45, 18); dir.current.intensity = n(w.a.si, w.b.si); dir.current.color.set(w.a.sun).lerp(cB.set(w.b.sun), w.t) }
+      if (hemi.current) { hemi.current.intensity = n(w.a.hi, w.b.hi); hemi.current.color.set(w.a.hs).lerp(cB.set(w.b.hs), w.t); hemi.current.groundColor.set(w.a.hg).lerp(cB.set(w.b.hg), w.t) }
+      scene.environmentIntensity = n(w.a.env, w.b.env)
+      updateGlow(1 - daylight(Math.max(0, h - 1.4)).k) // lampu menyala sedikit lebih awal (magrib)
+      return
+    }
     tmp.copy(NIGHT_SKY).lerp(DAY_SKY, k).lerp(DUSK, dusk * 0.5)
     ;(scene.background as Color).copy(tmp)
     if (scene.fog) (scene.fog as Fog).color.copy(tmp)
@@ -43,7 +76,7 @@ function DayNight() {
       dir.current.intensity = 0.15 + 1.4 * k
       dir.current.color.set(dusk > 0.3 ? '#ffc08a' : k > 0.5 ? '#ffffff' : '#7f9bff')
     }
-    if (hemi.current) hemi.current.intensity = 0.25 + 0.6 * k
+    if (hemi.current) { hemi.current.color.set('#cfe4ff'); hemi.current.groundColor.set('#6b7a55'); hemi.current.intensity = 0.25 + 0.6 * k }
     scene.environmentIntensity = 0.04 + 0.4 * k
     updateGlow(1 - k)
   })
@@ -378,6 +411,62 @@ function Taman() {
       <Sign text="TAMAN KOTA" w={1.8} h={0.55} p={[-1.5, 1.6, 9.25]} ry={Math.PI} bg="#2e7d4f" fg="#fff" glow={0.25} />
       <Bx x={-1.5} z={9.3} w={0.1} h={1.35} d={0.1} c="#444" />
     </group>
+  )
+}
+
+
+// ---------------------------------------------------------------- tanaman & perlengkapan jalan
+const GREENS = ['#2f7d3a', '#3c9448', '#4aa457', '#2a6e33', '#5cb25f']
+function Bush({ p, s = 1, seed = 0 }: { p: [number, number, number]; s?: number; seed?: number }) {
+  const blobs = useMemo(() => Array.from({ length: 4 }, (_, i) => ({ x: (hash2(seed + i) - 0.5) * 0.7, y: 0.35 + hash2(seed + i + 9) * 0.25, z: (hash2(seed + i + 4) - 0.5) * 0.5, r: 0.42 + hash2(seed + i + 2) * 0.2, c: GREENS[(seed + i) % 5] })), [seed])
+  return (
+    <group position={p} scale={s}>
+      {blobs.map((b, i) => (
+        <mesh key={i} position={[b.x, b.y, b.z]} castShadow receiveShadow><icosahedronGeometry args={[b.r, 1]} /><meshStandardMaterial color={b.c} roughness={0.95} flatShading /></mesh>
+      ))}
+    </group>
+  )
+}
+const hash2 = (n: number) => { const x = Math.sin(n * 127.1 + 311.7) * 43758.5453; return x - Math.floor(x) }
+function Hedges() {
+  return (
+    <>
+      {HEDGES.map(([a, b, z], k) => Array.from({ length: Math.floor((b - a) / 1.25) }, (_, i) => <Bush key={k + ':' + i} p={[a + 0.6 + i * 1.25, 0, z]} s={1.05 + hash2(i + k) * 0.3} seed={i * 3 + k * 40} />))}
+    </>
+  )
+}
+/** Garis cat hitam-putih di tepi trotoar (seperti jalan kampung). */
+function CurbStripes() {
+  const ref = useRef<InstancedMesh>(null)
+  useLayoutEffect(() => {
+    const m = ref.current!, d = new Object3D(), c = new Color(); let i = 0
+    for (const z of [-4.05, 4.05]) for (let k = 0; k < 76; k++) { d.position.set(-37.5 + k, 0.17, z); d.updateMatrix(); m.setMatrixAt(i, d.matrix); m.setColorAt(i, c.set(k % 2 ? '#f4f1e8' : '#1d2024')); i++ }
+    m.instanceMatrix.needsUpdate = true; if (m.instanceColor) m.instanceColor.needsUpdate = true
+  }, [])
+  return <instancedMesh ref={ref} args={[undefined, undefined, 152]} receiveShadow><boxGeometry args={[1, 0.06, 0.22]} /><meshStandardMaterial roughness={0.9} /></instancedMesh>
+}
+function Bicycle({ p, ry = 0 }: { p: [number, number, number]; ry?: number }) {
+  return (
+    <group position={p} rotation={[0, ry, 0]}>
+      {[-0.55, 0.55].map((x) => <mesh key={x} position={[x, 0.36, 0]} rotation={[0, 0, 0]} castShadow><torusGeometry args={[0.34, 0.025, 6, 20]} /><meshStandardMaterial color="#222" /></mesh>)}
+      <Cyl p={[0, 0.55, 0]} r={0.02} h={1.0} c="#2c3e50" rot={[0, 0, 1.2]} /><Cyl p={[-0.2, 0.62, 0]} r={0.02} h={0.62} c="#2c3e50" rot={[0, 0, -0.25]} />
+      <Cyl p={[0.5, 0.72, 0]} r={0.02} h={0.5} c="#444" rot={[0, 0, 0.18]} /><Bx x={0.52} y={0.96} z={0} w={0.06} h={0.04} d={0.5} c="#222" mid />
+      <Bx x={-0.3} y={0.78} z={0} w={0.28} h={0.06} d={0.16} c="#222" mid /><Bx x={0.8} y={0.55} z={0} w={0.3} h={0.2} d={0.22} c="#c9a23a" mid />
+    </group>
+  )
+}
+function TrashBag({ p, s = 1 }: { p: [number, number, number]; s?: number }) {
+  return <mesh position={[p[0], 0.28 * s, p[2]]} scale={[s, 0.9 * s, 0.9 * s]} castShadow><sphereGeometry args={[0.32, 10, 8]} /><meshStandardMaterial color="#17191c" roughness={0.35} metalness={0.15} /></mesh>
+}
+function StreetDressing() {
+  return (
+    <>
+      <CurbStripes /><Hedges />
+      <Bicycle p={[-18.6, 0, -6]} ry={0.35} />
+      {[[5.0, -9.2], [5.5, -9.0], [15.4, -9.0], [-10.2, -9.6]].map(([x, z], i) => <TrashBag key={i} p={[x, 0, z]} s={0.9 + (i % 2) * 0.25} />)}
+      {[[-11.5, -9.6], [5.6, -9.7], [-26.8, -10.0], [15.9, -10.1]].map(([x, z], i) => <Plant key={i} p={[x, 0.08, z]} s={1.1 + (i % 2) * 0.2} />)}
+      <Flowers p={[-30, 0.05, -10.4]} w={2.2} d={0.7} /><Flowers p={[33, 0.05, -10.2]} w={2.6} d={0.7} />
+    </>
   )
 }
 
@@ -854,7 +943,7 @@ export function World() {
         <Lightformer form="rect" intensity={0.8} position={[8, 3, 4]} rotation-y={-Math.PI / 2} scale={[8, 4, 1]} color="#ffe9c7" />
       </Environment>
       <Street />
-      <Kos /><Warung /><JobCenter /><KoranStand /><Ekspedisi /><KamarMandi /><NasgorCart /><OjekStand /><ParkirProps /><Kelontong /><Pasar /><Gudang /><Taman /><Trees /><Lamps /><LampLights /><Utilities /><Backdrop /><Markers />
+      <Kos /><Warung /><JobCenter /><KoranStand /><Ekspedisi /><KamarMandi /><NasgorCart /><OjekStand /><ParkirProps /><Kelontong /><Pasar /><Gudang /><Taman /><Trees /><StreetDressing /><Lamps /><LampLights /><Utilities /><Backdrop /><Markers />
       <Cart p={[-7.2, 0, -7.4]} ry={0.1} />
       {(Object.keys(NPCS) as NpcId[]).map((id) => <Npc key={id} id={id} />)}
       <SceneProps />

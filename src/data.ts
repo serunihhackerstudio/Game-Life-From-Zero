@@ -31,7 +31,10 @@ export const ZONES: Zone[] = [
 export const TREES: [number, number][] = [
   [-10, 12.5], [-6, 16.5], [8, 16], [11, 12.5], [0, 18], [-13, 18],
   [-30, -12], [-30, 9], [33, 9], [-34, -4], [35, -6], [-26, 16], [28, 16],
+  [-33, 13], [-19, 14], [-16, 9.6], [18.5, 17.5], [31.5, 18.5], [-2.5, 21], [14, 21],
 ]
+/** Pagar tanaman di sisi selatan trotoar (celah di jalan masuk taman x 1.5–7). */
+export const HEDGES: [number, number, number][] = [[-37, -2, 5.95], [7.2, 14, 5.95]]
 export const LAMPS: [number, number][] = [-30, -15, 0, 15, 30].map((x) => [x, -4.6])
 
 // Kos: pusat (-18,-14), 10 x 8, dinding tebal 0.4, pintu 2.4 di tengah sisi depan (z=-10)
@@ -94,6 +97,8 @@ export const COLLIDERS: Box[] = [
   { x: 27, z: 11.2, w: 3, d: 1.1 },
   { x: -5, z: 11, w: 0.4, d: 0.4 }, // lampu taman
   { x: 12, z: 11, w: 0.4, d: 0.4 },
+  ...HEDGES.map(([a, b, z]) => ({ x: (a + b) / 2, z, w: b - a, d: 0.9 })),
+  { x: -18.6, z: -6, w: 1.9, d: 0.6 }, // sepeda ontel
   ...TREES.map(([x, z]) => ({ x, z, w: 0.8, d: 0.8 })),
   ...LAMPS.map(([x, z]) => ({ x, z, w: 0.4, d: 0.4 })),
 ]

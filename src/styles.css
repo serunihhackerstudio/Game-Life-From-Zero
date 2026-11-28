@@ -149,3 +149,34 @@ kbd { background: #ffd23f; color: #222; padding: 2px 8px; border-radius: 6px; fo
 .wage td { padding: 6px 4px; border-bottom: 1px solid rgba(255,255,255,.08); } .wage td:last-child { text-align: right; }
 .wage .tot td { font-weight: 800; font-size: 17px; color: #7be07b; border-bottom: 0; }
 .res .mini-btns { justify-content: center; }
+
+/* ====================== GAYA "HANGAT" ====================== */
+html[data-look='warm'] {
+  --gold: #d9a93d; --gold-2: #f3c96a; --cream: #ffe9b8; --brown-1: rgba(92,60,36,.93); --brown-2: rgba(54,33,20,.94);
+  --font: "Baloo 2", "Nunito", "Trebuchet MS", "Arial Rounded MT Bold", "Segoe UI", system-ui, sans-serif;
+}
+html[data-look='warm'] body, html[data-look='warm'] button, html[data-look='warm'] input { font-family: var(--font); }
+html[data-look='warm'] .panel, html[data-look='warm'] .sheet, html[data-look='warm'] .mini-card, html[data-look='warm'] .dlg, html[data-look='warm'] .modal, html[data-look='warm'] .card, html[data-look='warm'] .prompt {
+  background: linear-gradient(180deg, var(--brown-1), var(--brown-2)); border: 2px solid var(--gold); backdrop-filter: none;
+  box-shadow: 0 5px 0 rgba(0,0,0,.38), inset 0 0 0 1px rgba(255,235,170,.22), 0 14px 34px rgba(0,0,0,.35); color: var(--cream);
+}
+html[data-look='warm'] .panel { border-radius: 20px; } html[data-look='warm'] .prompt { border-radius: 999px; font-weight: 800; }
+html[data-look='warm'] .who { font-size: 15px; font-weight: 800; color: var(--cream); } html[data-look='warm'] .who small { color: var(--gold-2); opacity: 1; }
+html[data-look='warm'] .money { font-size: 34px; font-weight: 800; line-height: 1.05; color: #94f26e; -webkit-text-stroke: 1.2px #1b4a10; paint-order: stroke fill; text-shadow: 0 3px 0 #1b4a10, 0 0 16px rgba(120,255,80,.4); }
+html[data-look='warm'] .bar { color: var(--cream); font-weight: 700; }
+html[data-look='warm'] .track { height: 11px; border-radius: 6px; background: rgba(0,0,0,.42); box-shadow: inset 0 1px 3px rgba(0,0,0,.55); }
+html[data-look='warm'] .track div { border-radius: 6px; box-shadow: inset 0 -3px 0 rgba(0,0,0,.18), inset 0 2px 0 rgba(255,255,255,.32); }
+html[data-look='warm'] .tr h4, html[data-look='warm'] .sec { color: var(--gold-2); opacity: 1; font-weight: 800; }
+html[data-look='warm'] kbd { background: #ffd23f; box-shadow: 0 2px 0 #b8860b; border-radius: 7px; }
+html[data-look='warm'] .toast { background: linear-gradient(180deg, var(--brown-1), var(--brown-2)); border: 1.5px solid var(--gold); border-left-width: 5px; border-radius: 12px; font-weight: 700; }
+html[data-look='warm'] .label { background: rgba(70,44,26,.9); border: 1.5px solid var(--gold); font-family: var(--font); font-weight: 700; }
+html[data-look='warm'] .list li, html[data-look='warm'] .wage td { background: rgba(255,235,170,.07); }
+html[data-look='warm'] .list button, html[data-look='warm'] .dlg-c button:hover, html[data-look='warm'] .seg button.sel, html[data-look='warm'] .card .primary, html[data-look='warm'] .primary-s, html[data-look='warm'] .mini-btns .go, html[data-look='warm'] .modal button, html[data-look='warm'] .mg-pause button {
+  background: linear-gradient(180deg, #f3c96a, #d9a02a); border-color: #b8860b; color: #3a2210; font-weight: 800; box-shadow: 0 3px 0 #8a6414;
+}
+html[data-look='warm'] .card button, html[data-look='warm'] .dlg-c button, html[data-look='warm'] .mini-btns button, html[data-look='warm'] .seg button { border-color: rgba(243,201,106,.55); background: rgba(255,235,170,.08); color: var(--cream); font-weight: 700; }
+html[data-look='warm'] .menu { background: radial-gradient(circle at 30% 20%, #8a5a34, #2a170c 75%); }
+html[data-look='warm'] .card h1 { color: var(--gold-2); letter-spacing: .06em; text-shadow: 0 3px 0 rgba(0,0,0,.4); }
+html[data-look='warm'] .dlg-h b { color: var(--gold-2); } html[data-look='warm'] .caret { color: var(--gold-2); }
+html[data-look='warm'] .bars div { background: #1d0f06; }
+html[data-look='warm'] .vig { mix-blend-mode: multiply; }

@@ -7,10 +7,13 @@ import { World } from './World'
 import { useGame } from './store'
 import { AudioDirector, Credits, Settings } from './Settings'
 import { QUALITY, useSettings } from './settings'
+import { Grading } from './Fx'
 
 export default function App() {
   const screen = useGame((s) => s.screen)
   const quality = useSettings((s) => s.quality)
+  const look = useSettings((s) => s.look)
+  useEffect(() => { document.documentElement.dataset.look = look }, [look])
   const q = QUALITY[quality]
 
   useEffect(() => {
